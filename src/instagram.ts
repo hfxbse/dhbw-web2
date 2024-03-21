@@ -30,13 +30,14 @@ async function fetchVerification(): Promise<{ csrf: string, keyVersion: number, 
     }
 }
 
-async function encryptPassword({password, keyId, publicKey}: {
+async function encryptPassword({time = new Date(), password, keyId, publicKey}: {
+    time?: Date,
     password: string,
     keyId: number,
     publicKey: string,
 }) {
     const passwordBuffer = encoder.encode(password)
-    const time = (Date.now() / 1000).toFixed(0);
+    const timeString = (time.getTime() / 1000).toFixed(0)
 
     if (publicKey.length !== 64) throw new Error("Wrong public key hex.")
     const keyBuffer = new Uint8Array(hexToArrayBuffer(publicKey))
@@ -54,7 +55,7 @@ async function encryptPassword({password, keyId, publicKey}: {
 
     const exportedKeys = await crypto.subtle.exportKey("raw", rawKeys)
     const cipher = new Uint8Array(await crypto.subtle.encrypt({
-        additionalData: encoder.encode(time),
+        additionalData: encoder.encode(timeString),
         iv,
         name: algorithmName,
         tagLength: 16 * 8
@@ -72,7 +73,7 @@ async function encryptPassword({password, keyId, publicKey}: {
     const converted = []
     target.forEach(element => converted.push(String.fromCharCode(element)))
 
-    return {time, encryptedPassword: btoa(converted.join(''))}
+    return {time: parseInt(timeString, 10), encryptedPassword: btoa(converted.join(''))}
 }
 
 export async function login({user, password}: { user: string, password: string }): Promise<string> {
