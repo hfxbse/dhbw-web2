@@ -96,7 +96,19 @@ export async function login({user, password}: { user: string, password: string }
     })
 
     const identifier = "sessionid="
-    const identify = (cookie) => cookie.startsWith(identifier)
+    const identify = (cookie: string) => cookie.startsWith(identifier)
+
+    if (!response.ok) {
+        if (response.headers.get("Content-Type").startsWith("application/json;")) {
+            throw new Error((await response.json()).message ?? "Login attempted failed.")
+        } else {
+            throw new Error(await response.text())
+        }
+    }
+
+    if ((await response.json())["authenticated"] !== true) {
+        throw new Error("Authentication failed.")
+    }
 
     return response.headers
         .getSetCookie().find(identify)
