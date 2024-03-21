@@ -15,5 +15,9 @@
   "devDependencies": {
     "@types/node": "^20.11.30",
     "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "hex-to-array-buffer": "^2.0.0",
+    "tweetnacl-sealedbox-js": "^1.2.0"
   }
 }
