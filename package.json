@@ -17,6 +17,7 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
+    "@inquirer/prompts": "^4.3.0",
     "hex-to-array-buffer": "^2.0.0",
     "tweetnacl-sealedbox-js": "^1.2.0"
   }
