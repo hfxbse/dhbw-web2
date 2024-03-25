@@ -4,7 +4,23 @@ import sealBox from "tweetnacl-sealedbox-js";
 const crypto = globalThis.crypto
 const encoder = new TextEncoder()
 
-export async function fetchVerification(): Promise<{ csrf: string, keyVersion: number, keyId: number, publicKey: string }> {
+export interface InstagramEncryptionKey {
+    public: string,
+    id: number,
+    version: number
+}
+
+export interface VerificationData {
+    csrf: string
+    key: InstagramEncryptionKey
+}
+
+export interface EncryptedPassword {
+    timestamp: number,
+    cipher: string
+}
+
+export async function fetchVerification(): Promise<VerificationData> {
     const response = await fetch("https://www.instagram.com/api/v1/web/data/shared_data/", {
         headers: {
             "Sec-Fetch-Site": "same-origin"
@@ -24,27 +40,28 @@ export async function fetchVerification(): Promise<{ csrf: string, keyVersion: n
 
     return {
         csrf: data.config.csrf_token,
-        keyId: parseInt(data.encryption.key_id, 10),
-        publicKey: data.encryption.public_key,
-        keyVersion: parseInt(data.encryption.version, 10),
+        key: {
+            id: parseInt(data.encryption.key_id, 10),
+            public: data.encryption.public_key,
+            version: parseInt(data.encryption.version, 10),
+        }
     }
 }
 
-export async function encryptPassword({time, password, keyId, publicKey, providedKey}: {
+export async function encryptPassword({time, password, key, providedKey}: {
     time?: Date | undefined,
     providedKey?: CryptoKey | undefined,
     password: string,
-    keyId: number,
-    publicKey: string,
-}) {
+    key: InstagramEncryptionKey
+}): Promise<EncryptedPassword> {
     const passwordBuffer = encoder.encode(password)
     const timeString = ((time ?? new Date()).getTime() / 1000).toFixed(0)
 
-    if (publicKey.length !== 64) throw new Error("Wrong public key hex.")
-    const keyBuffer = new Uint8Array(hexToArrayBuffer(publicKey))
+    if (key.public.length !== 64) throw new Error("Wrong public key hex.")
+    const keyBuffer = new Uint8Array(hexToArrayBuffer(key.public))
 
     const target = new Uint8Array(100 + passwordBuffer.length)
-    target.set([1, keyId])
+    target.set([1, key.id])
 
     const algorithmName = "AES-GCM"
     const rawKeys = providedKey ?? await crypto.subtle.generateKey({
@@ -74,18 +91,19 @@ export async function encryptPassword({time, password, keyId, publicKey, provide
     const converted = []
     target.forEach(element => converted.push(String.fromCharCode(element)))
 
-    return {time: parseInt(timeString, 10), encryptedPassword: btoa(converted.join(''))}
+    return {timestamp: parseInt(timeString, 10), cipher: btoa(converted.join(''))}
 }
 
-export async function login({user, password}: { user: string, password: string }): Promise<string> {
-    const verification = await fetchVerification()
-    const {time, encryptedPassword} = await encryptPassword({...verification, password})
-
+export async function login({user, password, verification}: {
+    user: string,
+    password: EncryptedPassword,
+    verification: VerificationData
+}): Promise<string> {
     const data = new FormData()
     data.set("username", user)
     data.set(
         "enc_password",
-        `#PWD_INSTAGRAM_BROWSER:${verification.keyVersion}:${time}:${encryptedPassword}`
+        `#PWD_INSTAGRAM_BROWSER:${verification.key.version}:${password.timestamp}:${password.cipher}`
     )
 
     const response = await fetch("https://www.instagram.com/api/v1/web/accounts/login/ajax/", {
@@ -96,9 +114,6 @@ export async function login({user, password}: { user: string, password: string }
             "Sec-Fetch-Site": "same-origin"
         }
     })
-
-    const identifier = "sessionid="
-    const identify = (cookie: string) => cookie.startsWith(identifier)
 
     if (!response.ok) {
         if (response.headers.get("Content-Type").startsWith("application/json;")) {
@@ -111,6 +126,9 @@ export async function login({user, password}: { user: string, password: string }
     if ((await response.json())["authenticated"] !== true) {
         throw new Error("Authentication failed.")
     }
+
+    const identifier = "sessionid="
+    const identify = (cookie: string) => cookie.startsWith(identifier)
 
     return response.headers
         .getSetCookie().find(identify)
