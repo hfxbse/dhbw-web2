@@ -199,7 +199,7 @@ describe("Login request handler", () => {
     })
 
     describe("Throws on failed login", () => {
-        test.each([undefined, "Received error description"])("Message: %s", async (message) => {
+        test.each([undefined, "Received error description"])("Message: %s", (message) => {
             const headers = new Headers()
             headers.set("Content-Type", "application/json; charset=utf-8")
 
@@ -209,36 +209,28 @@ describe("Login request handler", () => {
                 headers
             } as Response))
 
-            try {
-                await login({
-                    user: "user",
-                    password: encryptedPassword,
-                    verification
-                })
-            } catch (e) {
-                expect(e.message).toStrictEqual(message ?? expect.any(String))
-            }
-
-            expect.assertions(1)
+            return expect(login({
+                user: "user",
+                password: encryptedPassword,
+                verification
+            })).rejects.toStrictEqual(expect.objectContaining({message: message ?? expect.any(String)}))
         })
     })
 
-    test("Throws if not authenticated", async () => {
+    test("Throws if not authenticated", () => {
         jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
             ok: true,
             json: () => Promise.resolve({authenticated: false}),
         } as Response))
 
-        try {
-            await login({user: "user", password: encryptedPassword, verification})
-        } catch (e) {
-            expect(e.message).toStrictEqual(expect.any(String))
-        }
-
-        expect.assertions(1)
+        return expect(login({
+            user: "user",
+            password: encryptedPassword,
+            verification
+        })).rejects.toStrictEqual(expect.objectContaining({message: expect.any(String)}))
     })
 
-    test("Throws on failed request", async () => {
+    test("Throws on failed request", () => {
         const message = "Error message"
 
         const headers = new Headers()
@@ -250,17 +242,14 @@ describe("Login request handler", () => {
             headers
         } as Response))
 
-
-        try {
-            await login({user: "user", password: encryptedPassword, verification})
-        } catch (e) {
-            expect(e.message).toStrictEqual(message)
-        }
-
-        expect.assertions(1)
+        return expect(login({
+            user: "user",
+            password: encryptedPassword,
+            verification
+        })).rejects.toStrictEqual(expect.objectContaining({message}))
     })
 
-    test("Throws if 2FA is required", async () => {
+    test("Throws if 2FA is required", () => {
         const headers = new Headers()
         headers.set("Content-Type", "application/json; charset=utf-8")
 
@@ -270,12 +259,10 @@ describe("Login request handler", () => {
             headers
         } as Response))
 
-        try {
-            await login({user: "user", password: encryptedPassword, verification})
-        } catch (e) {
-            expect(e).toBeInstanceOf(TwoFactorRequired)
-        }
-
-        expect.assertions(1)
+        return expect(login({
+            user: "user",
+            password: encryptedPassword,
+            verification
+        })).rejects.toBeInstanceOf(TwoFactorRequired)
     })
 })
