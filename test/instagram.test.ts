@@ -216,9 +216,10 @@ describe("Login request handler", () => {
                     verification
                 })
             } catch (e) {
-                expect.assertions(1)
                 expect(e.message).toStrictEqual(message ?? expect.any(String))
             }
+
+            expect.assertions(1)
         })
     })
 
@@ -231,9 +232,10 @@ describe("Login request handler", () => {
         try {
             await login({user: "user", password: encryptedPassword, verification})
         } catch (e) {
-            expect.assertions(1)
             expect(e.message).toStrictEqual(expect.any(String))
         }
+
+        expect.assertions(1)
     })
 
     test("Throws on failed request", async () => {
@@ -248,12 +250,14 @@ describe("Login request handler", () => {
             headers
         } as Response))
 
+
         try {
             await login({user: "user", password: encryptedPassword, verification})
         } catch (e) {
-            expect.assertions(1)
             expect(e.message).toStrictEqual(message)
         }
+
+        expect.assertions(1)
     })
 
     test("Throws if 2FA is required", async () => {
@@ -269,8 +273,9 @@ describe("Login request handler", () => {
         try {
             await login({user: "user", password: encryptedPassword, verification})
         } catch (e) {
-            expect.assertions(1)
             expect(e).toBeInstanceOf(TwoFactorRequired)
         }
+
+        expect.assertions(1)
     })
 })
