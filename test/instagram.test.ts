@@ -123,7 +123,7 @@ describe("Password encryption", () => {
     })
 })
 
-describe("Verification data", () => {
+describe("Verification data fetcher", () => {
     const sharedData = {
         encryption: {
             key_id: "87",
@@ -142,22 +142,22 @@ describe("Verification data", () => {
         } as Response))
     })
 
-    test("Fetches CSRF token", async () => {
+    test("Returns CSRF token", async () => {
         const {csrf} = await fetchVerification()
         expect(csrf).toStrictEqual(sharedData.config.csrf_token)
     })
 
-    test("Fetches public key", async () => {
+    test("Returns public key", async () => {
         const {key} = await fetchVerification()
         expect(key.public).toStrictEqual(sharedData.encryption.public_key)
     })
 
-    test("Fetches key id", async () => {
+    test("Returns key id", async () => {
         const {key} = await fetchVerification()
         expect(key.id).toStrictEqual(parseInt(sharedData.encryption.key_id, 10))
     })
 
-    test("Fetches key version", async () => {
+    test("Returns key version", async () => {
         const {key} = await fetchVerification()
         expect(key.version).toStrictEqual(parseInt(sharedData.encryption.version, 10))
     })
