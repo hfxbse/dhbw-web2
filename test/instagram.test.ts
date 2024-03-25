@@ -4,7 +4,7 @@ import {
     encryptPassword,
     fetchVerification,
     InstagramEncryptionKey,
-    login,
+    login, TwoFactorRequired,
     VerificationData
 } from "../src/instagram";
 
@@ -198,7 +198,7 @@ describe("Login request handler", () => {
         expect(result).toStrictEqual(sessionId)
     })
 
-    describe("Throws exception on failed login", () => {
+    describe("Throws on failed login", () => {
         test.each([undefined, "Received error description"])("Message: %s", async (message) => {
             const headers = new Headers()
             headers.set("Content-Type", "application/json; charset=utf-8")
@@ -229,18 +229,14 @@ describe("Login request handler", () => {
         } as Response))
 
         try {
-            await login({
-                user: "user",
-                password: encryptedPassword,
-                verification
-            })
+            await login({user: "user", password: encryptedPassword, verification})
         } catch (e) {
             expect.assertions(1)
             expect(e.message).toStrictEqual(expect.any(String))
         }
     })
 
-    test("Throws exception on failed request", async () => {
+    test("Throws on failed request", async () => {
         const message = "Error message"
 
         const headers = new Headers()
@@ -253,14 +249,28 @@ describe("Login request handler", () => {
         } as Response))
 
         try {
-            await login({
-                user: "user",
-                password: encryptedPassword,
-                verification
-            })
+            await login({user: "user", password: encryptedPassword, verification})
         } catch (e) {
             expect.assertions(1)
             expect(e.message).toStrictEqual(message)
+        }
+    })
+
+    test("Throws if 2FA is required", async () => {
+        const headers = new Headers()
+        headers.set("Content-Type", "application/json; charset=utf-8")
+
+        jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
+            ok: false,
+            json: () => Promise.resolve({two_factor_required: true}),
+            headers
+        } as Response))
+
+        try {
+            await login({user: "user", password: encryptedPassword, verification})
+        } catch (e) {
+            expect.assertions(1)
+            expect(e).toBeInstanceOf(TwoFactorRequired)
         }
     })
 })

@@ -4,6 +4,12 @@ import sealBox from "tweetnacl-sealedbox-js";
 const crypto = globalThis.crypto
 const encoder = new TextEncoder()
 
+export class TwoFactorRequired extends Error {
+    constructor() {
+        super("Two factor authentication is enabled for this account.");
+    }
+}
+
 export interface InstagramEncryptionKey {
     public: string,
     id: number,
@@ -117,7 +123,16 @@ export async function login({user, password, verification}: {
 
     if (!response.ok) {
         if (response.headers.get("Content-Type").startsWith("application/json;")) {
-            throw new Error((await response.json()).message ?? "Login attempted failed.")
+            const data = await response.json() as {
+                message?: string,
+                two_factor_required?: boolean
+            }
+
+            if (data.two_factor_required) {
+                throw new TwoFactorRequired()
+            }
+
+            throw new Error(data.message ?? "Login attempted failed.")
         } else {
             throw new Error(await response.text())
         }
