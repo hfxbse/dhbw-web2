@@ -150,3 +150,7 @@ export async function login({user, password, verification}: {
         .split(";").find(identify)
         .substring(identifier.length)
 }
+
+export async function verify2FA({}: { user: string, verification: VerificationData, code: string }) {
+    throw Error("Not implemented.")
+}
