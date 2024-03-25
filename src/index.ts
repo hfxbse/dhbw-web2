@@ -1,5 +1,5 @@
 import * as prompt from '@inquirer/prompts';
-import {login} from "./instagram.js";
+import {login} from "./instagram";
 
 
 async function authenticate() {

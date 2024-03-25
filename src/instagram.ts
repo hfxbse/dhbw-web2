@@ -1,5 +1,5 @@
 import hexToArrayBuffer from "hex-to-array-buffer";
-import sealBox from "tweetnacl-sealedbox-js"
+import sealBox from "tweetnacl-sealedbox-js";
 
 const crypto = globalThis.crypto
 const encoder = new TextEncoder()
@@ -30,14 +30,15 @@ async function fetchVerification(): Promise<{ csrf: string, keyVersion: number, 
     }
 }
 
-async function encryptPassword({time = new Date(), password, keyId, publicKey}: {
-    time?: Date,
+export async function encryptPassword({time, password, keyId, publicKey, providedKey}: {
+    time?: Date | undefined,
+    providedKey?: CryptoKey | undefined,
     password: string,
     keyId: number,
     publicKey: string,
 }) {
     const passwordBuffer = encoder.encode(password)
-    const timeString = (time.getTime() / 1000).toFixed(0)
+    const timeString = ((time ?? new Date()).getTime() / 1000).toFixed(0)
 
     if (publicKey.length !== 64) throw new Error("Wrong public key hex.")
     const keyBuffer = new Uint8Array(hexToArrayBuffer(publicKey))
@@ -46,7 +47,7 @@ async function encryptPassword({time = new Date(), password, keyId, publicKey}: 
     target.set([1, keyId])
 
     const algorithmName = "AES-GCM"
-    const rawKeys = await crypto.subtle.generateKey({
+    const rawKeys = providedKey ?? await crypto.subtle.generateKey({
         length: keyBuffer.byteLength * 8,
         name: algorithmName
     }, true, ['encrypt', 'decrypt'])
