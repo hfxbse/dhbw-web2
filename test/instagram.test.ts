@@ -1,5 +1,5 @@
-import {describe, expect, test} from "@jest/globals";
-import {encryptPassword} from "../src/instagram";
+import {beforeEach, describe, expect, test, jest} from "@jest/globals";
+import {encryptPassword, fetchVerification} from "../src/instagram";
 
 interface InstagramEncryptionKey {
     public: string,
@@ -96,7 +96,6 @@ describe("Password encryption", () => {
         })
     })
 
-
     test("Consecutive runs generate different encrypted passwords", async () => {
         const password = "12345678"
         const time = new Date()
@@ -114,5 +113,45 @@ describe("Password encryption", () => {
         ])
 
         expect(first).not.toStrictEqual(second)
+    })
+})
+
+const sharedData = {
+    encryption: {
+        key_id: "87",
+        public_key: "8dd9aad29d9a614c338cff479f850d3ec57c525c33b3f702ab65e9e057fc087e",
+        version: "9"
+    },
+    config: {
+        csrf_token: "KdiF63JpmmBdeXp2Bs2LT7t8vlwWXXXX",
+    }
+}
+
+describe("Verification data", () => {
+    beforeEach(() => {
+        jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(sharedData)
+        } as Response))
+    })
+
+    test("Fetches CSRF token", async () => {
+        const {csrf} = await fetchVerification()
+        expect(csrf).toStrictEqual(sharedData.config.csrf_token)
+    })
+
+    test("Fetches public key", async () => {
+        const {publicKey} = await fetchVerification()
+        expect(publicKey).toStrictEqual(sharedData.encryption.public_key)
+    })
+
+    test("Fetches key id", async () => {
+        const {keyId} = await fetchVerification()
+        expect(keyId).toStrictEqual(parseInt(sharedData.encryption.key_id, 10))
+    })
+
+    test("Fetches key version", async () => {
+        const {keyVersion} = await fetchVerification()
+        expect(keyVersion).toStrictEqual(parseInt(sharedData.encryption.version, 10))
     })
 })

@@ -4,7 +4,7 @@ import sealBox from "tweetnacl-sealedbox-js";
 const crypto = globalThis.crypto
 const encoder = new TextEncoder()
 
-async function fetchVerification(): Promise<{ csrf: string, keyVersion: number, keyId: number, publicKey: string }> {
+export async function fetchVerification(): Promise<{ csrf: string, keyVersion: number, keyId: number, publicKey: string }> {
     const response = await fetch("https://www.instagram.com/api/v1/web/data/shared_data/", {
         headers: {
             "Sec-Fetch-Site": "same-origin"
