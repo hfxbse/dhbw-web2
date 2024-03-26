@@ -4,7 +4,7 @@ import {
     encryptPassword,
     fetchVerification,
     InstagramEncryptionKey,
-    login, TwoFactorRequired,
+    login, TwoFactorInformation, TwoFactorRequired,
     VerificationData
 } from "../src/instagram";
 
@@ -253,16 +253,33 @@ describe("Login request handler", () => {
         const headers = new Headers()
         headers.set("Content-Type", "application/json; charset=utf-8")
 
+        const info: TwoFactorInformation = {
+            device: "device-id",
+            identifier: "2fa-id",
+            user: "user"
+        }
+
         jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
             ok: false,
-            json: () => Promise.resolve({two_factor_required: true}),
+            json: () => Promise.resolve({
+                two_factor_required: true, two_factor_info: {
+                    device_id: info.device,
+                    two_factor_identifier: info.identifier,
+                    username: info.user
+                }
+            }),
             headers
         } as Response))
 
-        return expect(login({
+        const loginResult = login({
             user: "user",
             password: encryptedPassword,
             verification
-        })).rejects.toBeInstanceOf(TwoFactorRequired)
+        })
+
+        return Promise.all([
+            expect(loginResult).rejects.toBeInstanceOf(TwoFactorRequired),
+            expect(loginResult).rejects.toStrictEqual(expect.objectContaining({info}))
+        ])
     })
 })

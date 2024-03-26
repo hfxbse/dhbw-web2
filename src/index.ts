@@ -1,9 +1,17 @@
 import * as prompt from '@inquirer/prompts';
-import {encryptPassword, fetchVerification, login, TwoFactorRequired, VerificationData, verify2FA} from "./instagram";
+import {
+    encryptPassword,
+    fetchVerification,
+    login,
+    TwoFactorInformation,
+    TwoFactorRequired,
+    VerificationData,
+    verify2FA
+} from "./instagram";
 import {ExitPromptError} from "@inquirer/prompts";
 
 
-async function authenticate() {
+async function authenticate(): Promise<string> {
     const verification = await fetchVerification()
 
     while (true) {
@@ -20,17 +28,20 @@ async function authenticate() {
                 continue
             }
 
-            return await twoFactor({user, verification})
+            return await twoFactor({info: (e as TwoFactorRequired).info, verification})
         }
     }
 }
 
-async function twoFactor({verification, user}: { verification: VerificationData, user: string }) {
+async function twoFactor({verification, info}: {
+    verification: VerificationData,
+    info: TwoFactorInformation
+}): Promise<string> {
     while (true) {
         const code = await prompt.input({message: "Two factor authentication code: "})
 
         try {
-            return await verify2FA({verification, code, user})
+            return await verify2FA({verification, code, info})
         } catch (e) {
             console.error(e.message)
         }
