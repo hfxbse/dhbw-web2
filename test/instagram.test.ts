@@ -5,7 +5,7 @@ import {
     fetchVerification,
     InstagramEncryptionKey,
     login, TwoFactorInformation, TwoFactorRequired,
-    VerificationData
+    VerificationData, verify2FA
 } from "../src/instagram";
 
 interface PasswordEncryption {
@@ -163,25 +163,47 @@ describe("Verification data fetcher", () => {
     })
 })
 
-describe("Login request handler", () => {
-    const encryptedPassword: EncryptedPassword = {
-        cipher: btoa("cipher-text-as-base64"),
-        timestamp: 1234567890
-    }
+function getJsonHeaders() {
+    const headers = new Headers()
+    headers.set("Content-Type", "application/json; charset=utf-8")
 
-    const verification: VerificationData = {
-        key: instagramKey87,
-        csrf: "random-csrf-value"
+    return headers
+}
+
+function getSessionHeaders() {
+    const id = "a-super-secret-session-id"
+
+    const headers = getJsonHeaders()
+    headers.set(
+        "set-cookie",
+        `sessionid=${id}; Domain=.instagram.com; expires=Tue, 25-Mar-2025 12:23:08 GMT; HttpOnly; Max-Age=31536000; Path=/; Secure`
+    )
+
+    return {id, headers}
+}
+
+function expectThrowsErrorWithMessage(request: Promise<any>, message: string|undefined = undefined) {
+    return Promise.all([
+        expect(request).rejects.toBeInstanceOf(Error),
+        expect(request).rejects.toStrictEqual(expect.objectContaining({message: message ?? expect.any(String)}))
+    ])
+}
+
+describe("Login request handler", () => {
+    const loginData = {
+        user: "user",
+        password: {
+            cipher: btoa("cipher-text-as-base64"),
+            timestamp: 1234567890
+        } as EncryptedPassword,
+        verification: {
+            key: instagramKey87,
+            csrf: "random-csrf-value"
+        } as VerificationData
     }
 
     test("Returns session id on success", async () => {
-        const sessionId = "a-super-secret-session-id"
-
-        const headers = new Headers()
-        headers.set(
-            "set-cookie",
-            `sessionid=${sessionId}; Domain=.instagram.com; expires=Tue, 25-Mar-2025 12:23:08 GMT; HttpOnly; Max-Age=31536000; Path=/; Secure`
-        )
+        const {id, headers} = getSessionHeaders()
 
         jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
             ok: true,
@@ -189,31 +211,18 @@ describe("Login request handler", () => {
             headers
         } as Response))
 
-        const result = await login({
-            user: "user",
-            password: encryptedPassword,
-            verification
-        })
-
-        expect(result).toStrictEqual(sessionId)
+        return expect(login(loginData)).resolves.toStrictEqual(id)
     })
 
     describe("Throws on failed login", () => {
         test.each([undefined, "Received error description"])("Message: %s", (message) => {
-            const headers = new Headers()
-            headers.set("Content-Type", "application/json; charset=utf-8")
-
             jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
                 ok: false,
                 json: () => Promise.resolve({authenticated: false, message}),
-                headers
+                headers: getJsonHeaders()
             } as Response))
 
-            return expect(login({
-                user: "user",
-                password: encryptedPassword,
-                verification
-            })).rejects.toStrictEqual(expect.objectContaining({message: message ?? expect.any(String)}))
+            return expectThrowsErrorWithMessage(login(loginData), message)
         })
     })
 
@@ -223,11 +232,7 @@ describe("Login request handler", () => {
             json: () => Promise.resolve({authenticated: false}),
         } as Response))
 
-        return expect(login({
-            user: "user",
-            password: encryptedPassword,
-            verification
-        })).rejects.toStrictEqual(expect.objectContaining({message: expect.any(String)}))
+        return expectThrowsErrorWithMessage(login(loginData))
     })
 
     test("Throws on failed request", () => {
@@ -242,17 +247,10 @@ describe("Login request handler", () => {
             headers
         } as Response))
 
-        return expect(login({
-            user: "user",
-            password: encryptedPassword,
-            verification
-        })).rejects.toStrictEqual(expect.objectContaining({message}))
+        return expectThrowsErrorWithMessage(login(loginData), message)
     })
 
     test("Throws if 2FA is required", () => {
-        const headers = new Headers()
-        headers.set("Content-Type", "application/json; charset=utf-8")
-
         const info: TwoFactorInformation = {
             device: "device-id",
             identifier: "2fa-id",
@@ -268,18 +266,47 @@ describe("Login request handler", () => {
                     username: info.user
                 }
             }),
-            headers
+            headers: getJsonHeaders()
         } as Response))
 
-        const loginResult = login({
-            user: "user",
-            password: encryptedPassword,
-            verification
-        })
+        const loginResult = login(loginData)
 
         return Promise.all([
             expect(loginResult).rejects.toBeInstanceOf(TwoFactorRequired),
             expect(loginResult).rejects.toStrictEqual(expect.objectContaining({info}))
         ])
+    })
+})
+
+describe("Two factor authentication handler", () => {
+    const requestData = {
+        verification: {} as VerificationData,
+        info: {} as TwoFactorInformation,
+        code: "123456"
+    }
+
+    test("Returns session id on success", () => {
+        const {id, headers} = getSessionHeaders()
+
+        jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
+            ok: true,
+            headers
+        } as Response))
+
+        return expect(verify2FA(requestData)).resolves.toStrictEqual(id)
+    });
+
+    describe("Throws on failed authentication", () => {
+        test.each([undefined, "Received error description"])("Message: %s", (message) => {
+            jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
+                ok: false,
+                json: () => Promise.resolve({authenticated: false, message}),
+                headers: getJsonHeaders()
+            } as Response))
+
+            const verificationResult = verify2FA(requestData)
+
+            return expectThrowsErrorWithMessage(verificationResult, message)
+        })
     })
 })
