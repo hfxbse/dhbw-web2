@@ -5,9 +5,18 @@ const crypto = globalThis.crypto
 const encoder = new TextEncoder()
 
 export class TwoFactorRequired extends Error {
-    constructor() {
+    info: TwoFactorInformation
+
+    constructor(info: TwoFactorInformation) {
         super("Two factor authentication is enabled for this account.");
+        this.info = info
     }
+}
+
+export interface TwoFactorInformation {
+    identifier: string,
+    user: string,
+    device: string
 }
 
 export interface InstagramEncryptionKey {
@@ -100,6 +109,20 @@ export async function encryptPassword({time, password, key, providedKey}: {
     return {timestamp: parseInt(timeString, 10), cipher: btoa(converted.join(''))}
 }
 
+function getSessionId(response: Response): string {
+    const identifier = "sessionid="
+    const identify = (cookie: string) => cookie.startsWith(identifier)
+
+    return response.headers
+        .getSetCookie().find(identify)
+        .split(";").find(identify)
+        .substring(identifier.length)
+}
+
+function hasJsonBody(response: Response): boolean {
+    return response.headers.get("Content-Type").startsWith("application/json;")
+}
+
 export async function login({user, password, verification}: {
     user: string,
     password: EncryptedPassword,
@@ -122,14 +145,23 @@ export async function login({user, password, verification}: {
     })
 
     if (!response.ok) {
-        if (response.headers.get("Content-Type").startsWith("application/json;")) {
+        if (hasJsonBody(response)) {
             const data = await response.json() as {
                 message?: string,
-                two_factor_required?: boolean
+                two_factor_required?: boolean,
+                two_factor_info?: {
+                    username: string,
+                    two_factor_identifier: string,
+                    device_id: string
+                }
             }
 
             if (data.two_factor_required) {
-                throw new TwoFactorRequired()
+                throw new TwoFactorRequired({
+                    user: data.two_factor_info.username,
+                    identifier: data.two_factor_info.two_factor_identifier,
+                    device: data.two_factor_info.device_id
+                })
             }
 
             throw new Error(data.message ?? "Login attempted failed.")
@@ -142,11 +174,33 @@ export async function login({user, password, verification}: {
         throw new Error("Authentication failed.")
     }
 
-    const identifier = "sessionid="
-    const identify = (cookie: string) => cookie.startsWith(identifier)
+    return getSessionId(response)
+}
 
-    return response.headers
-        .getSetCookie().find(identify)
-        .split(";").find(identify)
-        .substring(identifier.length)
+export async function verify2FA({verification, info, code}: {
+    info: TwoFactorInformation,
+    verification: VerificationData,
+    code: string
+}): Promise<string> {
+    const body = new FormData()
+    body.set("username", info.user)
+    body.set("identifier", info.identifier)
+    body.set("verificationCode", code)
+
+    const response = await fetch("https://www.instagram.com/api/v1/web/accounts/login/ajax/two_factor/", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": verification.csrf,
+            "Sec-Fetch-Site": "same-origin",
+            "X-Mid": info.device,
+        },
+        body
+    })
+
+    if (!response.ok) {
+        const message = hasJsonBody(response) ? (await response.json()).message : await response.text()
+        throw Error(message ?? "Two factor authentication failed.")
+    }
+
+    return getSessionId(response)
 }
