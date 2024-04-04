@@ -1,0 +1,29 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+#graph-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    position: relative;
+}
+#graph {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+.node {
+    cursor: pointer;
+}
+.highlighted {
+    fill: green !important;
+}
+.faded {
+    opacity: 0.2;
+}
+/* Add this CSS rule to invert colors */
+.inverted {
+    filter: invert(100%);
+}
