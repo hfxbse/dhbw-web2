@@ -34,15 +34,7 @@ const svg = d3.select("#graph");
 const width = window.innerWidth;
 const height = window.innerHeight;
 svg.attr("width", width).attr("height", height);
-// Append a semi-transparent rectangle to create a dark overlay
-svg.append("rect")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("fill", "rgba(0, 0, 0, 1)") // Adjust the opacity as needed
-    .attr("class", "darkscreen")
-    .lower(); // Ensure the darkscreen is behind other elements
 
-invertColors();
 const graph = svg.append("g");
 
 // Create force simulation

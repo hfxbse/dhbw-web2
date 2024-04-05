@@ -23,7 +23,3 @@ html, body {
 .faded {
     opacity: 0.2;
 }
-/* Add this CSS rule to invert colors */
-.inverted {
-    filter: invert(100%);
-}
