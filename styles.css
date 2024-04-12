@@ -16,10 +16,25 @@ html, body {
 }
 .node {
     cursor: pointer;
+    r: 10;
+
 }
 .highlighted {
     fill: green !important;
+    stroke: black;
+    stroke-width: 2px;
 }
+
+.linkHighlighted {
+    stroke: purple;
+    stroke-width: 3px;
+}
+
 .faded {
     opacity: 0.2;
+}
+.sourceHighlighted {
+    fill: red !important;
+    stroke: #333;
+    stroke-width: 4px;
 }

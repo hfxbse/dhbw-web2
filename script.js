@@ -1,14 +1,39 @@
-// Function to fill in the data
+/*const fs = require('fs');
+const path = require('path');
+
+// Function to read data from JSON file and convert to Map
+function readDataFromFile(filename) {
+    try {
+        const jsonData = JSON.parse(fs.readFileSync(filename, 'utf-8'));
+        const data = new Map();
+        Object.keys(jsonData).forEach(key => {
+            data.set(key, jsonData[key]);
+        });
+        return data;
+    } catch (error) {
+        console.error(`Error reading data from ${filename}: ${error.message}`);
+        return null;
+    }
+}
+
+// Get the absolute path of data.json using path.join
+const filename = path.join(__dirname, 'data.json');
+
+// Test reading data from JSON file
+const dataFromFile = readDataFromFile(filename);
+console.log("Data read from file:", dataFromFile);*/
+
 function fillData() {
     const data = new Map();
     data.set("User 1", ["User 2", "User 3", "User 4"]);
     data.set("User 2", ["User 1", "User 3"]);
-    data.set("User 3", ["User 1", "User 2", "User 4", "User 5", "User 6", "User 7", "User 8"]);
+    data.set("User 3", ["User 1", "User 2", "User 4", "User 5", "User 6", "User 7"]);
     data.set("User 4", ["User 1", "User 3", "User 5", "User 6", "User 7", "User 8"]);
     data.set("User 5", ["User 3", "User 4", "User 6", "User 7", "User 8"]);
     data.set("User 6", ["User 3", "User 4", "User 5", "User 7", "User 8"]);
     data.set("User 7", ["User 3", "User 4", "User 5", "User 6", "User 8"]);
-    data.set("User 8", ["User 3", "User 4", "User 5", "User 6", "User 7"]);
+    data.set("User 8", ["User 5", "User 6", "User 7"]);
+    data.set("User 9", ["User 5", "User 6", "User 7"]);
     return data;
 }
 
@@ -71,11 +96,12 @@ node.on("click", function(event, d) {
         unselectNode();
         return;
     }
+
     selectedNode = d;
     resetNodeColors(); // Reset node colors
     highlightedNode = d;
     highlightNodes();
-    d3.select(this).style("fill", "red"); // Set the clicked node color
+    d3.select(this).classed("sourceHighlighted", true);
     d3.select(this).classed("faded", false);
 });
 
@@ -115,20 +141,27 @@ let highlightedNode = data[0];
 function highlightNodes() {
     node.classed("faded", d => !highlightedNode.connections.includes(data.findIndex(node => node.name === d.name)));
     node.classed("highlighted", d => highlightedNode.connections.includes(data.findIndex(node => node.name === d.name)));
-    link.classed("highlighted", d => d.source === highlightedNode || d.target === highlightedNode);
+
+    link.classed("linkTargetHighlighted", d => (d.target === highlightedNode && !(d.source === highlightedNode) && d.target.connections.length === 1));
+    link.classed("linkHighlighted", d => (d.target === highlightedNode || d.source === highlightedNode));
 }
+
 
 // Function to unselect the current node
 function unselectNode() {
     selectedNode = null;
-    resetNodeColors(); // Reset node colors
-    node.classed("highlighted", false); // Remove highlighting from nodes
-    link.classed("highlighted", false); // Remove highlighting from links
+    resetNodeColors();
+    node.classed("faded", false);
+    link.classed("faded", false);
 }
 
 // Function to reset node colors
-function resetNodeColors() {
-    node.style("fill", "steelblue");
+function resetNodeColors() { //remove highlighted
+    node.classed("highlighted", false);
+    node.classed("sourceHighlighted", false);
+    link.classed("highlighted", false);
+    link.classed("linkHighlighted", false);
+    link.classed("linkTargetHighlighted", false);
 }
 
 // Define drag behavior
@@ -165,11 +198,4 @@ svg.call(zoom); // call zoom on the SVG element
 
 function zoomed(event) {
     graph.attr("transform", event.transform); // adjust the graph's transform based on the zoom event
-}
-
-// Function to invert colors
-function invertColors() {
-    svg.classed("inverted", true); // Apply the inverted class to the SVG
-    // Apply the inverted class to all child elements of the SVG
-    svg.selectAll("*").classed("inverted", true);
 }
