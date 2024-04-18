@@ -6,5 +6,6 @@
   "User 5": ["User 3", "User 4", "User 6", "User 7", "User 8"],
   "User 6": ["User 3", "User 4", "User 5", "User 7", "User 8"],
   "User 7": ["User 3", "User 4", "User 5", "User 6", "User 8"],
-  "User 8": ["User 5", "User 6", "User 7"]
+  "User 8": ["User 5", "User 6", "User 7"],
+  "User 9": ["User 5", "User 6", "User 7"]
 }
