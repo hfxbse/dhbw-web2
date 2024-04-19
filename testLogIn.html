@@ -5,19 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Graph with D3.js</title>
     <link rel="stylesheet" type="text/css" href="styles.css">
-    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-<div id="graph-container">
-    <div class="toolbar">
-        <input id="searchBox" disabled="true" type="text" placeholder="Search...">
-        <button id="logButton">Login</button>
-    </div>
-    <svg id="graph"></svg>
+<div class="toolbar">
+    <input id="searchBox" type="text" disabled="true" placeholder="Search...">
+    <button id="logButton">Login</button>
 </div>
-<script src="createGraph.js" defer></script>
 <script src="toolbar.js" defer></script>
 
+<!-- Testing the behaviour of Login and Search -->
 
 <!-- Log-In Modal -->
 <div id="loginModal" class="modal">
@@ -55,6 +51,5 @@
         </div>
     </div>
 </div>
-
 </body>
 </html>

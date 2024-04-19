@@ -1,30 +1,37 @@
-const fs = require('fs');
-const path = require('path');
+//import {readDataFromFile} from "./jsonReader.mjs";
 
-// Function to read data from JSON file and convert to array of objects
-function readDataFromFile(filename) {
-    try {
-        const jsonData = JSON.parse(fs.readFileSync(filename, 'utf-8'));
-        const dataArray = [];
-
-        // Iterate through each key-value pair in the JSON data
-        Object.keys(jsonData).forEach(name => {
-            const connections = jsonData[name].map(targetName => Object.keys(jsonData).indexOf(targetName));
-            dataArray.push({ name, connections });
-        });
-
-        return dataArray;
-    } catch (error) {
-        console.error(`Error reading data from ${filename}: ${error.message}`);
-        return null;
-    }
+function fillData() {
+    const data = new Map();
+    data.set("User 1", ["User 2", "User 3", "User 4"]);
+    data.set("User 2", ["User 1", "User 3"]);
+    data.set("User 3", ["User 1", "User 2", "User 4", "User 5", "User 6", "User 7"]);
+    data.set("User 4", ["User 1", "User 3", "User 5", "User 6", "User 7", "User 8"]);
+    data.set("User 5", ["User 3", "User 4", "User 6", "User 7", "User 8"]);
+    data.set("User 6", ["User 3", "User 4", "User 5", "User 7", "User 8"]);
+    data.set("User 7", ["User 3", "User 4", "User 5", "User 6", "User 8"]);
+    data.set("User 8", ["User 5", "User 6", "User 7"]);
+    data.set("User 9", ["User 5", "User 6", "User 7"]);
+    return data;
 }
 
-// Get the absolute path of data.json using path.join
-const filename = path.join(__dirname, 'data.json');
+// Function to convert the map to an array of objects
+function mapToArray(dataMap) {
+    const dataArray = [];
+    const nodeNames = Array.from(dataMap.keys());
 
-// Test reading data from JSON file and converting to array of objects
-const data = readDataFromFile(filename);
+    nodeNames.forEach((name, index) => {
+        const connections = dataMap.get(name).map(targetName => nodeNames.indexOf(targetName));
+        dataArray.push({ name, connections });
+    });
+
+    return dataArray;
+}
+
+// Generate the data
+const dataMap = fillData();
+const data = mapToArray(dataMap);
+//const data = readDataFromFile();
+
 console.log("Data read from file:", data);
 
 // Create SVG
