@@ -37,7 +37,7 @@ html, body {
 
 .sourceHighlighted {
     fill: red !important;
-    stroke: #333;
+    stroke: #000000;
     stroke-width: 4px;
 }
 /*Toolbar*/
@@ -61,7 +61,7 @@ html, body {
 .toolbar button {
     width: 20%;
     padding: 8px;
-    border-color: black;
+    /*border-color: #383434;*/
     background-color: #ffffff;
     cursor: pointer;
     margin-right: 2%;

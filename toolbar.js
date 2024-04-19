@@ -1,13 +1,5 @@
 document.addEventListener("DOMContentLoaded", function() {
-    var searchBox = document.getElementById("searchBox");
     var tokenValidated = false; // Variable to track if token is validated
-
-    searchBox.addEventListener("keypress", function(event) {
-        if (event.key === "Enter" && tokenValidated) { // Enable search box only if token is validated
-            var userInput = searchBox.value;
-            sendToScript(userInput);
-        }
-    });
 
     var logButton = document.getElementById("logButton");
     logButton.addEventListener("click", function(event) {
@@ -29,14 +21,6 @@ document.addEventListener("DOMContentLoaded", function() {
     loginButton.addEventListener("click", function() {
         // Call a function to handle login when login button is clicked
         handleLogin();
-    });
-
-    var tokenSubmitButton = document.getElementById("tokenButton"); // Changed the id to match the button id in HTML
-    tokenSubmitButton.addEventListener("click", function(event) {
-        event.preventDefault(); // Prevent default form submission behavior
-
-        // Call the function to handle token validation and update tokenValidated status
-        handleTokenValidation();
     });
 
     // Close button event listeners for modals
@@ -113,4 +97,13 @@ function handleTokenValidation() {
 
     // Update token validation status
     tokenValidated = true;
+
+    // Set up event listener for searchBox after enabling it
+    searchBox.addEventListener("keypress", function(event) {
+        if (event.key === "Enter" && tokenValidated) { // Enable search box only if token is validated
+            var userInput = searchBox.value;
+            sendToScript(userInput);
+            searchBox.value = ""; // Clear the searchBox value after sending input
+        }
+    });
 }
