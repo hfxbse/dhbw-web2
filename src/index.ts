@@ -9,6 +9,7 @@ import {
     verify2FA
 } from "./instagram";
 import {ExitPromptError} from "@inquirer/prompts";
+import {fetchUser} from "./follower";
 
 
 async function authenticate(): Promise<SessionData> {
@@ -76,6 +77,15 @@ try {
     if (await prompt.confirm({message: "Show session data?", default: false})) {
         console.dir({session})
     }
+
+    const rootUsername = await prompt.input({
+        message: "Starting point account username:  ",
+        default: session.user.username
+    })
+
+    const rootUser = await fetchUser(rootUsername, session)
+
+    console.dir({rootUser, followerCount: rootUser.follower.length})
 } catch (e) {
     if (!(e instanceof ExitPromptError)) {
         console.error(e)

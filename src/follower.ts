@@ -1,3 +1,5 @@
+import {SessionData} from "./instagram";
+
 export interface User {
     pk: string,
     name: string,
@@ -8,7 +10,7 @@ export interface User {
 }
 
 
-export async function fetchUser(username: string, sessionID: string): Promise<User> {
+export async function fetchUser(username: string, session: SessionData): Promise<User> {
     const response = await fetch(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
         headers: {
             "Sec-Fetch-Site": "same-origin",
@@ -30,7 +32,7 @@ export async function fetchUser(username: string, sessionID: string): Promise<Us
     }).data.user
 
     console.dir({user});
-    const fetchedFollower: User[] = await getFollower({pk: user.id, sessionID});
+    const fetchedFollower: User[] = await getFollower({targetUserId: user.id, session});
     return {
         pk: user.id,
         name: user.full_name,
@@ -41,14 +43,14 @@ export async function fetchUser(username: string, sessionID: string): Promise<Us
     };
 }
 
-async function getFollower({pk, sessionID, maxID}: {
-    pk: string, sessionID: string, maxID?: string
+async function getFollower({session, maxID, targetUserId}: {
+    session: SessionData, targetUserId: string, maxID?: string
 }): Promise<User[]> {
-    const response = await fetch(`https://www.instagram.com/api/v1/friendships/${pk}/followers/?max_id=${maxID != undefined ? maxID : ''}`, {
+    const response = await fetch(`https://www.instagram.com/api/v1/friendships/${targetUserId}/followers/?max_id=${maxID != undefined ? maxID : ''}`, {
         headers: {
             "Sec-Fetch-Site": "same-origin",
             "X-IG-App-ID": "936619743392459",
-            "Cookie": `sessionid=${sessionID}; ds_user_id=${pk}`,
+            "Cookie": `sessionid=${session.id}; ds_user_id=${session.user.id}`,
         }
     })
 
@@ -73,7 +75,7 @@ async function getFollower({pk, sessionID, maxID}: {
     });
 
     if (followerList.next_max_id != undefined) {
-        const nextUsers = await getFollower({ pk, sessionID, maxID : followerList.next_max_id});
+        const nextUsers = await getFollower({session, targetUserId, maxID: followerList.next_max_id});
         return users.concat(nextUsers);
     } else {
         return users;
