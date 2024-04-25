@@ -1,9 +1,10 @@
+import './styles.css'
+
 import {d3graph} from "./createJson.js";
-import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import {placeholderImage} from "./placeholder.js";
+import * as d3 from "d3";
 
 let colorGroupList = {};
-console.dir(d3graph);
 const color = d3.scaleSequential(interpolateAngry);
 
 function chart() {
@@ -122,7 +123,7 @@ function chart() {
 }
 
 // Add event listener to the Clear Colors button
-document.getElementById("clearColors").addEventListener("click", clearColors);
+document.getElementById("clearColors")?.addEventListener("click", clearColors);
 
 // Function to clear all link colors
 function clearColors() {
@@ -139,7 +140,7 @@ function clearColors() {
 }
 
 let searchBox = document.getElementById("searchBox");
-searchBox.addEventListener("keypress", function (event) {
+searchBox?.addEventListener("keypress", function (event) {
     if (event.key === "Enter") {
         let userInput = searchBox.value.trim(); // Trim to remove any leading/trailing spaces
 
@@ -176,8 +177,11 @@ function highlightLinks(node) {
         .attr("stroke", clickedColor);
 }
 
-let svgElement = chart();
-document.body.appendChild(svgElement);
+window.addEventListener('DOMContentLoaded', function () {
+    let svgElement = chart();
+    document.body.appendChild(svgElement);
+})
+
 
 function interpolateAngry(t) {
     return d3.hsl(
