@@ -48,8 +48,26 @@ async function twoFactor({verification, info}: {
     }
 }
 
+async function readExistingSessionId(): Promise<SessionData> {
+    const sessionId = await prompt.password({message: "Session id: "})
+
+    return {
+        id: sessionId,
+        user: {
+            id: parseInt(sessionId.split("%")[0], 10)
+        }
+    }
+}
+
+
 try {
-    console.dir(await authenticate())
+    const existingSession = await prompt.confirm({message: "Use an existing session id?", default: false});
+
+    const session: SessionData = await (!existingSession ? authenticate() : readExistingSessionId())
+
+    if (await prompt.confirm({message: "Show session data?", default: false})) {
+        console.dir({session})
+    }
 } catch (e) {
     if (!(e instanceof ExitPromptError)) {
         console.error(e)
