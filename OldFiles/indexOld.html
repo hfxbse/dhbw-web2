@@ -1,21 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Instagram Network Graph</title>
-    <link rel="stylesheet" type="text/css" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Graph with D3.js</title>
+    <link rel="stylesheet" type="text/css" href="../styles.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-<script src="graph.js" type="module"></script>
-
 <div id="graph-container">
     <div class="toolbar">
         <input id="searchBox" disabled="true" type="text" placeholder="Search...">
         <button id="logButton">Login</button>
     </div>
+    <svg id="graph"></svg>
 </div>
+<script src="createGraphOld.js" defer></script>
+<script src="../toolbar.js" defer></script>
 
-<script src="toolbar.js" defer></script>
+
 <!-- Log-In Modal -->
 <div id="loginModal" class="modal">
     <div class="modal-content">
@@ -52,5 +55,6 @@
         </div>
     </div>
 </div>
+
 </body>
 </html>

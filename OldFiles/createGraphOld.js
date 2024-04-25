@@ -21,7 +21,7 @@ function mapToArray(dataMap) {
 
     nodeNames.forEach((name, index) => {
         const connections = dataMap.get(name).map(targetName => nodeNames.indexOf(targetName));
-        dataArray.push({ name, connections });
+        dataArray.push({name, connections});
     });
 
     return dataArray;
@@ -54,7 +54,7 @@ const link = graph.append("g")
     .attr("stroke", "#999")
     .attr("stroke-opacity", 0.6)
     .selectAll("line")
-    .data(data.flatMap(d => d.connections.map(target => ({ source: d, target: data[target] }))))
+    .data(data.flatMap(d => d.connections.map(target => ({source: d, target: data[target]}))))
     .join("line");
 
 // Create nodes
@@ -71,7 +71,7 @@ const node = graph.append("g")
 let selectedNode = null;
 
 // Handle click event on nodes
-node.on("click", function(event, d) {
+node.on("click", function (event, d) {
     if (selectedNode === d) {
         unselectNode();
         return;
@@ -122,10 +122,9 @@ function highlightNodes() {
     node.classed("faded", d => !highlightedNode.connections.includes(data.findIndex(node => node.name === d.name)));
     node.classed("highlighted", d => highlightedNode.connections.includes(data.findIndex(node => node.name === d.name)));
 
-    link.classed("linkTargetHighlighted", d => (d.target === highlightedNode && !(d.source === highlightedNode) && d.target.connections.length === 1));
-    link.classed("linkHighlighted", d => (d.target === highlightedNode || d.source === highlightedNode));
+    link.classed("linkHighlighted", d => (d.target === highlightedNode));
+    link.classed("linkHighlighted", d => (d.source === highlightedNode));
 }
-
 
 // Function to unselect the current node
 function unselectNode() {

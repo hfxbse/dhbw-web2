@@ -23,8 +23,8 @@ export function readDataFromFile() {
 // Get the directory name of the current module
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
-// Get the absolute path of data.json using path.join
-const filename = path.join(__dirname.slice(3), 'data.json');
+// Get the absolute path of data.js using path.join
+const filename = path.join(__dirname.slice(3), 'data.js');
 
 // Test reading data from JSON file and converting to array of objects
 const data = readDataFromFile(filename);

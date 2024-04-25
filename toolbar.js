@@ -1,7 +1,7 @@
+let tokenValidated = false; // Variable to track if token is validated
 document.addEventListener("DOMContentLoaded", function() {
-    var tokenValidated = false; // Variable to track if token is validated
 
-    var logButton = document.getElementById("logButton");
+    let logButton = document.getElementById("logButton");
     logButton.addEventListener("click", function(event) {
         // Prevent the default behavior of the button click event
         event.preventDefault();
@@ -17,14 +17,14 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    var loginButton = document.getElementById("loginButton");
+    let loginButton = document.getElementById("loginButton");
     loginButton.addEventListener("click", function() {
         // Call a function to handle login when login button is clicked
         handleLogin();
     });
 
     // Close button event listeners for modals
-    var closeButtons = document.querySelectorAll(".close");
+    let closeButtons = document.querySelectorAll(".close");
     closeButtons.forEach(function(button) {
         button.addEventListener("click", function() {
             // Log out when any modal is closed
@@ -73,13 +73,17 @@ function handleLogout() {
     document.getElementById("username").value = "";
     document.getElementById("password").value = "";
     document.getElementById("token").value = "";
-    var logButton = document.getElementById("logButton");
+    let logButton = document.getElementById("logButton");
     logButton.textContent = "Login";
+
+    // disable searchBox
+    let searchBox = document.getElementById("searchBox");
+    searchBox.disabled = true;
 }
 
 function handleTokenValidation() {
     // Retrieve token from input field
-    var token = document.getElementById("token").value;
+    let token = document.getElementById("token").value;
 
     // You can do whatever you want with the token here
     // For now, just logging it
@@ -92,7 +96,7 @@ function handleTokenValidation() {
     document.getElementById("tokenModal").style.display = "none";
 
     // Enable search box after successful token validation
-    var searchBox = document.getElementById("searchBox");
+    let searchBox = document.getElementById("searchBox");
     searchBox.disabled = false;
 
     // Update token validation status
