@@ -2,14 +2,15 @@ import * as prompt from '@inquirer/prompts';
 import {
     encryptPassword,
     fetchVerification,
-    login, SessionData,
+    login,
     TwoFactorInformation,
     TwoFactorRequired,
     VerificationData,
     verify2FA
-} from "./instagram";
+} from "./instagram/login";
 import {ExitPromptError} from "@inquirer/prompts";
-import {fetchUser} from "./follower";
+import {fetchUser} from "./instagram/follower";
+import SessionData from "./instagram/session-data";
 
 
 async function authenticate(): Promise<SessionData> {

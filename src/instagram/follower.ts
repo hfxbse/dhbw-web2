@@ -1,4 +1,4 @@
-import {SessionData} from "./instagram";
+import SessionData from "./session-data";
 
 export interface User {
     pk: string,
