@@ -2,7 +2,7 @@ import * as prompt from '@inquirer/prompts';
 import {
     encryptPassword,
     fetchVerification,
-    login,
+    login, SessionData,
     TwoFactorInformation,
     TwoFactorRequired,
     VerificationData,
@@ -11,7 +11,7 @@ import {
 import {ExitPromptError} from "@inquirer/prompts";
 
 
-async function authenticate(): Promise<string> {
+async function authenticate(): Promise<SessionData> {
     const verification = await fetchVerification()
 
     while (true) {
@@ -36,7 +36,7 @@ async function authenticate(): Promise<string> {
 async function twoFactor({verification, info}: {
     verification: VerificationData,
     info: TwoFactorInformation
-}): Promise<string> {
+}): Promise<SessionData> {
     while (true) {
         const code = await prompt.input({message: "Two factor authentication code: "})
 
@@ -49,7 +49,7 @@ async function twoFactor({verification, info}: {
 }
 
 try {
-    console.dir({sessionId: await authenticate()})
+    console.dir(await authenticate())
 } catch (e) {
     if (!(e instanceof ExitPromptError)) {
         console.error(e)

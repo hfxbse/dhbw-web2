@@ -4,7 +4,7 @@ import {
     encryptPassword,
     fetchVerification,
     InstagramEncryptionKey,
-    login, TwoFactorInformation, TwoFactorRequired,
+    login, SessionData, TwoFactorInformation, TwoFactorRequired,
     VerificationData, verify2FA
 } from "../src/instagram";
 
@@ -182,7 +182,7 @@ function getSessionHeaders() {
     return {id, headers}
 }
 
-function expectThrowsErrorWithMessage(request: Promise<any>, message: string|undefined = undefined) {
+function expectThrowsErrorWithMessage(request: Promise<any>, message: string | undefined = undefined) {
     return Promise.all([
         expect(request).rejects.toBeInstanceOf(Error),
         expect(request).rejects.toStrictEqual(expect.objectContaining({message: message ?? expect.any(String)}))
@@ -202,16 +202,23 @@ describe("Login request handler", () => {
         } as VerificationData
     }
 
-    test("Returns session id on success", async () => {
+    test("Returns session data on success", async () => {
         const {id, headers} = getSessionHeaders()
+        const response = {authenticated: true, userId: 1}
+        const sessionData: SessionData = {
+            id,
+            user: {
+                id: response.userId
+            }
+        }
 
         jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({authenticated: true}),
+            json: () => Promise.resolve(response),
             headers
         } as Response))
 
-        return expect(login(loginData)).resolves.toStrictEqual(id)
+        return expect(login(loginData)).resolves.toStrictEqual(expect.objectContaining(sessionData))
     })
 
     describe("Throws on failed login", () => {
@@ -254,7 +261,10 @@ describe("Login request handler", () => {
         const info: TwoFactorInformation = {
             device: "device-id",
             identifier: "2fa-id",
-            user: "user"
+            user: {
+                id: 1,
+                username: "user"
+            }
         }
 
         jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
@@ -263,7 +273,8 @@ describe("Login request handler", () => {
                 two_factor_required: true, two_factor_info: {
                     device_id: info.device,
                     two_factor_identifier: info.identifier,
-                    username: info.user
+                    username: info.user.username,
+                    pk: info.user.id
                 }
             }),
             headers: getJsonHeaders()
@@ -281,19 +292,31 @@ describe("Login request handler", () => {
 describe("Two factor authentication handler", () => {
     const requestData = {
         verification: {} as VerificationData,
-        info: {} as TwoFactorInformation,
+        info: {
+            user: {
+                id: 1,
+                username: "user"
+            }
+        } as TwoFactorInformation,
         code: "123456"
     }
 
-    test("Returns session id on success", () => {
+    test("Returns session data on success", () => {
         const {id, headers} = getSessionHeaders()
+        const sessionData: SessionData = {
+            id,
+            user: {
+                id: requestData.info.user.id,
+                username: requestData.info.user.username
+            }
+        }
 
         jest.spyOn(global, "fetch").mockImplementation(() => Promise.resolve({
             ok: true,
             headers
         } as Response))
 
-        return expect(verify2FA(requestData)).resolves.toStrictEqual(id)
+        return expect(verify2FA(requestData)).resolves.toStrictEqual(expect.objectContaining(sessionData));
     });
 
     describe("Throws on failed authentication", () => {
