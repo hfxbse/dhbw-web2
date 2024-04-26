@@ -1,8 +1,8 @@
-import data from './data.js';
+import {data} from './createJson.js';
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 let colorGroupList = {};
-console.log(data);
+console.log(data)
 
 function chart() {
     const width = screen.width;
@@ -29,11 +29,11 @@ function chart() {
         .data(data.links)
         .join("line")
         .attr("stroke", d => { //group has to be set up correctly
-            if (!colorGroupList[d.value]) {
+            if (!colorGroupList[d.source]) {
                 // If not, generate a random color and store it
-                colorGroupList[d.value] = Math.random();
+                colorGroupList[d.source] = Math.random();
             }
-            return color(colorGroupList[d.value]);
+            return color(colorGroupList[d.source]);
         });
 
     const defs = graph.append("defs");
@@ -54,7 +54,7 @@ function chart() {
         .attr("target", "_blank")
         .append("image")
         .attr("xlink:href", d => {
-            let url = d.url;
+            let url = d.imageURL;
             if (url == null) {
                 return "https://woodfibreinsulation.co.uk/wp-content/uploads/2017/04/blank-profile-picture-973460-1-1-1024x1024.png";
             } else {
@@ -68,7 +68,7 @@ function chart() {
         .attr("clip-path", "url(#imageClip)"); // Apply clipping path here
 
     node.append("title")
-        .text(d => d.id);
+        .text(d => d.username);
 
     node.call(d3.drag()
         .on("start", dragstarted)
