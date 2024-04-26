@@ -1,5 +1,13 @@
 export default {
-    "nodes": [{"id": "Myriel", "group": 1}, {"id": "Napoleon", "group": 1}, {
+    "nodes": [{
+        "id": "YOU",
+        "group": 1,
+        "url": "https://cdn.pixabay.com/photo/2017/06/13/12/54/profile-2398783_1280.png"
+    }, {
+        "id": "Myriel",
+        "group": 1,
+        "url": "https://th.bing.com/th/id/OIP.0011pvrGeHPbbm3DVP1zRgHaHa?w=178&h=180&c=7&r=0&o=5&pid=1.7"
+    }, {"id": "Napoleon", "group": 1}, {
         "id": "Mlle.Baptistine",
         "group": 1
     }, {"id": "Mme.Magloire", "group": 1}, {"id": "CountessdeLo", "group": 1}, {
@@ -65,10 +73,12 @@ export default {
     }, {"id": "Babet", "group": 4}, {"id": "Claquesous", "group": 4}, {
         "id": "Montparnasse",
         "group": 4
-    }, {"id": "Toussaint", "group": 5}, {"id": "Child1", "group": 10}, {"id": "Child2", "group": 10}, {
-        "id": "Brujon",
-        "group": 4
-    }, {"id": "Mme.Hucheloup", "group": 8}],
+    },
+        {"id": "Hi", "group": 30},
+        {"id": "Toussaint", "group": 5}, {"id": "Child1", "group": 10}, {"id": "Child2", "group": 10}, {
+            "id": "Brujon",
+            "group": 4
+        }, {"id": "Mme.Hucheloup", "group": 8}],
     "links": [{"source": "Napoleon", "target": "Myriel", "value": 1}, {
         "source": "Mlle.Baptistine",
         "target": "Myriel",
