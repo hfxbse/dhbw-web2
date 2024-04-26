@@ -9,7 +9,7 @@ import {
     verify2FA
 } from "./instagram/login";
 import {ExitPromptError} from "@inquirer/prompts";
-import {fetchUser} from "./instagram/follower";
+import {getGenerations} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
 
 
@@ -84,7 +84,7 @@ try {
         default: session.user.username
     })
 
-    const rootUser = await fetchUser(rootUsername, session)
+    const rootUser = await getGenerations({gen: 1, username: rootUsername, session})
 
     console.dir({rootUser, followerCount: rootUser.follower.length})
 } catch (e) {

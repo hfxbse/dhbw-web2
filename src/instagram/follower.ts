@@ -1,7 +1,7 @@
 import SessionData from "./session-data";
 
 export interface User {
-    pk: string,
+    pk: number,
     name: string,
     username: string,
     imageURL: URL | null,
@@ -22,7 +22,7 @@ export async function fetchUser(username: string, session: SessionData): Promise
     const user = (await response.json() as {
         data: {
             user: {
-                id: string,
+                id: number,
                 full_name: string,
                 username: string,
                 profile_pic_url: string,
@@ -43,8 +43,46 @@ export async function fetchUser(username: string, session: SessionData): Promise
     };
 }
 
+export async function getGenerations({gen, username, session}: {
+    gen: number,
+    username: string,
+    session: SessionData
+}): Promise<User> {
+    const rootUser: User = await fetchUser(username, session);
+    console.dir(rootUser);
+
+    const isPrivate = (user: User, gen: number) => {
+        console.dir({user, gen})
+
+        return false;
+    }
+
+    let currentGeneration: User[] = [rootUser];
+    for (let i = 0; i < gen; i++) {
+        let nextGeneration: User[] = [];
+        for (const parentUser of currentGeneration) {
+            const follower = [...parentUser.follower];
+
+            while(follower.length >= 0) {
+                const batch = follower.slice(0, 10);
+                (await Promise.all(batch.map(
+                    async childUser => {
+                        return {
+                            ...childUser,
+                            follower: isPrivate(parentUser, gen) ? [] : await getFollower({session, targetUserId: childUser.pk})
+                        }
+                    }
+                ))).forEach(childUser => nextGeneration.push(childUser))
+                await new Promise<void>(resolve => setTimeout(() => resolve(), 10 * 1000))
+            }
+        }
+        currentGeneration = nextGeneration;
+    }
+    return rootUser;
+}
+
 async function getFollower({session, maxID, targetUserId}: {
-    session: SessionData, targetUserId: string, maxID?: string
+    session: SessionData, targetUserId: number, maxID?: string
 }): Promise<User[]> {
     const response = await fetch(`https://www.instagram.com/api/v1/friendships/${targetUserId}/followers/?max_id=${maxID != undefined ? maxID : ''}`, {
         headers: {
@@ -64,9 +102,10 @@ async function getFollower({session, maxID, targetUserId}: {
         }[],
         next_max_id: string
     }
+    console.dir(followerList.users[0].username);
     const users = followerList.users.map((user) => {
         return {
-            pk: user.id,
+            pk: parseInt(user.id, 10),
             username: user.username,
             name: user.full_name,
             imageURL: new URL(user.profile_pic_url),
