@@ -1,8 +1,8 @@
-import {data} from './createJson.js';
+import { data } from './createJson.js';
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 let colorGroupList = {};
-console.log(data)
+console.log(data);
 
 function chart() {
     const width = screen.width;
@@ -10,8 +10,8 @@ function chart() {
     const color = d3.scaleSequential(interpolateAngry);
 
     const simulation = d3.forceSimulation(data.nodes)
-        .force("link", d3.forceLink(data.links).id(d => d.id).distance(50)) // verringerte Anziehungskraft zwischen den Nodes und den Verbindungen
-        .force("charge", d3.forceManyBody().strength(-300)) // erhöhte Abstoßungskraft zwischen den Nodes
+        .force("link", d3.forceLink(data.links).id(d => d.id).distance(50))
+        .force("charge", d3.forceManyBody().strength(-300))
         .force("center", d3.forceCenter(width / 2, height / 2))
         .on("tick", ticked);
 
@@ -19,29 +19,22 @@ function chart() {
         .attr("width", width)
         .attr("height", height)
         .attr("viewBox", [0, 0, width, height])
-        .attr("class", "svg-container"); // Apply CSS class to SVG container
+        .attr("class", "svg-container");
 
     const graph = svg.append("g");
 
     const link = graph.append("g")
-        .attr("class", "link") // Apply CSS class to links
+        .attr("class", "link")
         .selectAll()
         .data(data.links)
-        .join("line")
-        .attr("stroke", d => { //group has to be set up correctly
-            if (!colorGroupList[d.source]) {
-                // If not, generate a random color and store it
-                colorGroupList[d.source] = Math.random();
-            }
-            return color(colorGroupList[d.source]);
-        });
+        .join("line");
 
     const defs = graph.append("defs");
 
     defs.append("clipPath")
         .attr("id", "imageClip")
         .append("circle")
-        .attr("r", 10); // Radius of the circle to clip the image
+        .attr("r", 10);
 
     const node = graph.append("g")
         .attr("class", "node")
@@ -49,9 +42,6 @@ function chart() {
         .data(data.nodes)
         .join("g")
         .attr("class", "node-group")
-        .append("a")
-        .attr("href", "https://www.google.com/?hl=de")
-        .attr("target", "_blank")
         .append("image")
         .attr("xlink:href", d => {
             let url = d.imageURL;
@@ -65,7 +55,8 @@ function chart() {
         .attr("height", 20)
         .attr("x", -10)
         .attr("y", -10)
-        .attr("clip-path", "url(#imageClip)"); // Apply clipping path here
+        .attr("clip-path", "url(#imageClip)")
+        .on("click", clicked);
 
     node.append("title")
         .text(d => d.username);
@@ -113,7 +104,46 @@ function chart() {
     }
 
     return svg.node();
+
+    function clicked(event, d) {
+        const clickedNodeId = d.id;
+        const linksToUpdate = link.filter(linkData => linkData.source.id === clickedNodeId || linkData.target.id === clickedNodeId);
+
+        if (!colorGroupList[d.id]) {
+            colorGroupList[d.id] = Math.random();
+        }
+
+        const clickedColor = color(colorGroupList[d.id]);
+        const isColored = linksToUpdate.attr("stroke") === clickedColor.toString();
+
+        if (isColored) {
+            linksToUpdate.transition().duration(500)
+                .attr("stroke", "#999");
+            delete colorGroupList[d.id];
+        } else {
+            linksToUpdate.transition().duration(500)
+                .attr("stroke", clickedColor);
+        }
+    }
 }
+
+// Add event listener to the Clear Colors button
+document.getElementById("clearColors").addEventListener("click", clearColors);
+
+// Function to clear all link colors
+function clearColors() {
+    // Select all links
+    const links = document.querySelectorAll(".link line");
+
+    // Reset the color of each link to the default color (#999)
+    links.forEach(link => {
+        link.setAttribute("stroke", "#999");
+    });
+
+    // Optionally, clear the colorGroupList object
+    colorGroupList = {};
+}
+
 
 let svgElement = chart();
 document.body.appendChild(svgElement);

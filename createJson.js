@@ -10,13 +10,16 @@ function createUserJSON(pk, name, username, imageURL, isPrivate) {
         imageURL: imageURL ? imageURL.toString() : null,
         private: isPrivate
     };
-    nodes.push(user);
+    if(!(name==null ||username==null)){
+        nodes.push(user);
+    }
 }
 
 function createUserLink(source, target) {
     const link = {
         source: source,
-        target: target
+        target: target,
+        group: source
     };
     links.push(link);
 }
@@ -52,7 +55,54 @@ const user = {
                     name: "Alidsfce",
                     username: "alisdfsce123",
                     imageURL: new URL("https://example.com/alice.jpg"),
-                    follower: null,
+                    follower: [{
+                        pk: "6",
+                        name: "Emily Smith",
+                        username: "emily_smith",
+                        imageURL: new URL("https://cdn.pixabay.com/photo/2016/11/01/21/11/avatar-1789663_1280.png"),
+                        follower: [
+                            {
+                                pk: "7",
+                                name: "Charlie",
+                                username: "charlie789",
+                                imageURL: new URL("https://example.com/charlie.jpg"),
+                                follower: [
+                                    {
+                                        pk: "8",
+                                        name: "David",
+                                        username: "david_123",
+                                        imageURL: null,
+                                        follower: [{
+                                            pk: "1"
+                                        }],
+                                        private: true
+                                    },
+                                    {
+                                        pk: "9",
+                                        name: "Emma",
+                                        username: "emma456",
+                                        imageURL: new URL("https://cdn.pixabay.com/photo/2016/04/01/12/11/avatar-1300582_1280.png"),
+                                        follower: [{
+                                            pk: "1"
+                                        }],
+                                        private: false
+                                    }
+                                ],
+                                private: false
+                            },
+                            {
+                                pk: "10",
+                                name: "Frank",
+                                username: "frank_f123",
+                                imageURL: new URL("https://example.com/frank.jpg"),
+                                follower: [{
+                                    pk: "1"
+                                }],
+                                private: false
+                            }
+                        ],
+                        private: true
+                    }],
                     private: false
                 },
                 {
@@ -79,8 +129,7 @@ const user = {
 };
 
 recursiveWriting(user);
-
-export const data = { nodes: nodes, links: links };
+export const data = {nodes: nodes, links: links};
 
 /*// Convert data object to JSON string
 const jsonData = JSON.stringify({ nodes: nodes, links: links }, null, 2);
