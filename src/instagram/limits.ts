@@ -3,12 +3,18 @@ export interface RandomDelayLimit {
     lower: number
 }
 
-export interface RateLimits {
-    batchSize: number,
-    batchCount: number,
-    delay: {
-        daily: RandomDelayLimit,
-        batches: RandomDelayLimit,
-        pages: RandomDelayLimit
+export interface Limits {
+    depth: {
+        generations: number,
+        followers: number,
+    }
+    rate: {
+        batchSize: number,
+        batchCount: number,
+        delay: {
+            daily: RandomDelayLimit,
+            batches: RandomDelayLimit,
+            pages: RandomDelayLimit
+        }
     }
 }

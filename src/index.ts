@@ -71,6 +71,37 @@ async function readExistingSessionId(): Promise<SessionData> {
 }
 
 
+async function rootUser({session}) {
+    while (true) {
+        try {
+            const rootUsername = await prompt.input({
+                message: "Starting point account username:  ",
+                default: session.user.username
+            })
+
+            const rootUser = await fetchUser(rootUsername.trim(), session);
+            console.dir({...rootUser, profile: {...rootUser.profile, imageURL: rootUser.profile.imageURL.href}})
+
+            if (await prompt.confirm({message: "Continue with this user?", default: true})) {
+                return rootUser
+            }
+        } catch (e) {
+            if ((e instanceof ExitPromptError)) throw e;
+
+            console.error(`Error: ${e.message ?? e}\n\nCould not load user. Try again.`)
+        }
+    }
+}
+
+async function wholeNumberPrompt({message, defaultValue}: { message: string, defaultValue: number }) {
+    return prompt.input({
+        message,
+        default: defaultValue.toString(10),
+        validate: input => /^\d*$/.test(input)
+    }).then(input => parseInt(input, 10))
+}
+
+
 try {
     const existingSession = await prompt.confirm({message: "Use an existing session id?", default: false});
 
@@ -80,34 +111,46 @@ try {
         console.dir({session})
     }
 
-    const rootUsername = await prompt.input({
-        message: "Starting point account username:  ",
-        default: session.user.username
+    const root = await rootUser({session})
+
+    const generations = await wholeNumberPrompt({
+        message: "Generations to include: ", defaultValue: 1
     })
 
-    const rootUser = await fetchUser(rootUsername.trim(), session);
-    console.dir(rootUser)
+    const followers = await wholeNumberPrompt({
+        message: "Maximal follower count to include for each user: ", defaultValue: 1000
+    })
 
     const graph = await getFollowerGraph({
-        gen: 0, root: rootUser, session, rateLimit: {
-            batchSize: 2000,
-            batchCount: 15,
-            delay: {
-                pages: {
-                    upper: 2500,
-                    lower: 500
-                },
-                batches: {
-                    upper: 30 * 60 * 1000,
-                    lower: 20 * 60 * 1000
-                },
-                daily: {
-                    upper: 30 * 60 * 60 * 1000,
-                    lower: 25 * 60 * 60 * 1000
+        root,
+        session,
+        limits: {
+            depth: {
+                generations,
+                followers,
+            },
+            rate: {
+                batchSize: 3000,
+                batchCount: 15,
+                delay: {
+                    pages: {
+                        upper: 2500,
+                        lower: 500
+                    },
+                    batches: {
+                        upper: 35 * 60 * 1000,
+                        lower: 25 * 60 * 1000
+                    },
+                    daily: {
+                        upper: 30 * 60 * 60 * 1000,
+                        lower: 25 * 60 * 60 * 1000
+                    }
                 }
             }
         }
     })
+
+    console.log(JSON.stringify(graph))
 
     printGraph(graph)
 } catch (e) {

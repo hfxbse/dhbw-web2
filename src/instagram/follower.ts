@@ -1,5 +1,5 @@
 import SessionData, {sessionToCookie} from "./session-data";
-import {RandomDelayLimit, RateLimits} from "./limits";
+import {RandomDelayLimit, Limits} from "./limits";
 import {User, UserGraph} from "./user";
 
 
@@ -20,30 +20,32 @@ function randomDelay(limit: RandomDelayLimit, details?: string): Promise<void> {
 }
 
 
-async function rateLimiter({graph, user, phase, batchCount, rateLimit}: {
+async function rateLimiter({graph, user, phase, batchCount, limits}: {
     graph: UserGraph,
     user: User,
     phase: number,
     batchCount: number
-    rateLimit: RateLimits
+    limits: Limits
 }) {
-    const phaseProgression = Math.floor(Object.entries(graph).length / (rateLimit.batchSize - batchCount * 25))
+    const phaseProgression = Math.floor(
+        Object.entries(graph).length / (limits.rate.batchSize - batchCount * 25)
+    )
 
     if (phase < phaseProgression) {
         printGraph(graph)
 
         const task = `(Task: ${user.profile.username})`
 
-        if (phaseProgression > rateLimit.batchCount) {
+        if (phaseProgression > limits.rate.batchCount) {
             await randomDelay(
-                rateLimit.delay.daily,
+                limits.rate.delay.daily,
                 `Reached daily limit. ${task}`
             )
 
             return 0
         } else {    // Delay after
             await randomDelay(
-                rateLimit.delay.batches,
+                limits.rate.delay.batches,
                 `Batch limit reached. ${task}.`
             )
 
@@ -52,7 +54,7 @@ async function rateLimiter({graph, user, phase, batchCount, rateLimit}: {
     }
 
     // delay between retrieving the next follower page
-    await randomDelay(rateLimit.delay.pages)
+    await randomDelay(limits.rate.delay.pages)
 
     return phase
 }
@@ -64,16 +66,15 @@ export function printGraph(graph: UserGraph) {
             username: user.profile.username,
             private: user.private,
             followerCount: user.followerIds?.length,
-            firstFollowers: user.followerIds?.map(id => graph[id].profile.username)
+            followers: user.followerIds?.map(id => graph[id].profile.username),
         }
     }))
 }
 
-export async function getFollowerGraph({gen, root, session, rateLimit}: {
-    gen: number,
+export async function getFollowerGraph({root, session, limits}: {
     root: User,
     session: SessionData,
-    rateLimit: RateLimits
+    limits: Limits
 }): Promise<UserGraph> {
     const graph: UserGraph = {[root.id]: root}
 
@@ -83,7 +84,7 @@ export async function getFollowerGraph({gen, root, session, rateLimit}: {
 
     const done: Set<number> = new Set()
 
-    for (let i = 0; i <= gen; i++) {
+    for (let i = 0; i <= limits.depth.generations; i++) {
         const open = Object.keys(graph)
             .filter(userId => !done.has(parseInt(userId, 10)))
             .map(openIds => parseInt(openIds, 10))
@@ -93,7 +94,7 @@ export async function getFollowerGraph({gen, root, session, rateLimit}: {
         while (open.length > 0) {
             let phase = 0
 
-            const batch = open.splice(0, Math.floor(rateLimit.batchSize / 100)).map(async task => {
+            const batch = open.splice(0, Math.floor(limits.rate.batchSize / 100)).map(async task => {
                 let nextPage = undefined
                 graph[task].followerIds = graph[task].followerIds ?? []
 
@@ -121,11 +122,17 @@ export async function getFollowerGraph({gen, root, session, rateLimit}: {
                     const userCount = Object.keys(graph).length;
                     console.dir({user: userCount, open: userCount - done.size, done: done.size})
 
+                    const userFollowerCount = graph[task].followerIds.length;
+                    if (limits.depth.followers > 0 && userFollowerCount >= limits.depth.followers) {
+                        console.log(`[DEPTH LIMITING]: Reached maximal follower count to include. (Task: ${graph[task].profile.username}).`)
+                        break;
+                    }
+
                     phase = await rateLimiter({
                         graph,
                         user: graph[task],
                         phase,
-                        rateLimit,
+                        limits: limits,
                         batchCount: batch.length
                     })
                 }
