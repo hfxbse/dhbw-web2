@@ -104,7 +104,10 @@ export async function getFollowerGraph({gen, root, session, rateLimit}: {
                         nextPage
                     })
 
-                    graph[task].followerIds.push(...followers.page.map(follower => follower.id))
+                    const followerIds = new Set(graph[task].followerIds)
+                    followers.page.forEach(follower => followerIds.add(follower.id))
+
+                    graph[task].followerIds = [...followerIds]
                     followers.page.forEach(follower => {
                         if (!graph[follower.id]) graph[follower.id] = follower;
                     })
