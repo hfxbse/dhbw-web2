@@ -1,34 +1,7 @@
 import SessionData from "./session-data";
+import {RandomDelayLimit, RateLimits} from "./limits";
+import {User, UserGraph} from "./user";
 
-export interface User {
-    id: number,
-    profile: {
-        name: string,
-        username: string,
-        imageURL: URL | null,
-    }
-    followerIds?: number[],
-    private?: boolean,
-    public: boolean,
-    personal?: boolean
-}
-
-export interface RandomDelayLimit {
-    upper: number,
-    lower: number
-}
-
-export interface RateLimits {
-    batchSize: number,
-    batchCount: number,
-    delay: {
-        daily: RandomDelayLimit,
-        batches: RandomDelayLimit,
-        pages: RandomDelayLimit
-    }
-}
-
-export type UserGraph = Record<number, User>;
 
 function sessionToCookie(session?: SessionData | undefined) {
     return session ? `sessionid=${session.id}; ds_user_id=${session.user.id}` : ''
@@ -246,6 +219,3 @@ async function fetchFollowers({session, targetUser, nextPage}: {
         nextPage: page.next_max_id ?? null
     }
 }
-
-
-
