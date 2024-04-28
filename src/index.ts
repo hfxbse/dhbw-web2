@@ -9,8 +9,9 @@ import {
     verify2FA
 } from "./instagram/login";
 import {ExitPromptError} from "@inquirer/prompts";
-import {fetchUser, getFollowerGraph, printGraph} from "./instagram/follower";
+import {getFollowerGraph, printGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
+import {fetchUser} from "./instagram/user";
 
 
 async function authenticate(): Promise<SessionData> {

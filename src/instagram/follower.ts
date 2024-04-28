@@ -1,11 +1,7 @@
-import SessionData from "./session-data";
+import SessionData, {sessionToCookie} from "./session-data";
 import {RandomDelayLimit, RateLimits} from "./limits";
 import {User, UserGraph} from "./user";
 
-
-function sessionToCookie(session?: SessionData | undefined) {
-    return session ? `sessionid=${session.id}; ds_user_id=${session.user.id}` : ''
-}
 
 function randomDelay(limit: RandomDelayLimit, details?: string): Promise<void> {
     if (limit.lower > limit.upper) {
@@ -23,45 +19,6 @@ function randomDelay(limit: RandomDelayLimit, details?: string): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, delay))
 }
 
-export async function fetchUser(username: string, session?: SessionData): Promise<User> {
-    const response = await fetch(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
-        headers: {
-            "Sec-Fetch-Site": "same-origin",
-            "X-IG-App-ID": "936619743392459",
-            "Cookie": sessionToCookie(session)
-        }
-    })
-
-    const user = (await response.json() as {
-        data: {
-            user: {
-                id: number,
-                full_name: string,
-                username: string,
-                profile_pic_url: string,
-                is_private: boolean,
-                followed_by_viewer: boolean,
-                is_business_account: boolean,
-                is_professional_account: boolean
-            }
-        }
-    }).data.user
-
-    const mapped = {
-        id: user.id,
-        profile: {
-            name: user.full_name,
-            username: user.username,
-            imageURL: user.profile_pic_url ? new URL(user.profile_pic_url) : null,
-        },
-        personal: !user.is_business_account && !user.is_professional_account,
-        public: !user.is_private
-    };
-
-    if (session) mapped["private"] = !user.followed_by_viewer && user.is_private;
-
-    return mapped;
-}
 
 async function rateLimiter({graph, user, phase, batchCount, rateLimit}: {
     graph: UserGraph,
