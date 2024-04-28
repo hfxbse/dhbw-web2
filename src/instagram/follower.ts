@@ -1,23 +1,63 @@
 import SessionData from "./session-data";
 
 export interface User {
-    pk: number,
-    name: string,
-    username: string,
-    imageURL: URL | null,
-    follower?: User[],
-    private: boolean
+    id: number,
+    profile: {
+        name: string,
+        username: string,
+        imageURL: URL | null,
+    }
+    followerIds?: number[],
+    private?: boolean,
+    public: boolean,
+    personal?: boolean
 }
 
+export interface RandomDelayLimit {
+    upper: number,
+    lower: number
+}
 
-export async function fetchUser(username: string, session: SessionData): Promise<User> {
+export interface RateLimits {
+    batchSize: number,
+    batchCount: number,
+    delay: {
+        daily: RandomDelayLimit,
+        batches: RandomDelayLimit,
+        pages: RandomDelayLimit
+    }
+}
+
+export type UserGraph = Record<number, User>;
+
+function sessionToCookie(session?: SessionData | undefined) {
+    return session ? `sessionid=${session.id}; ds_user_id=${session.user.id}` : ''
+}
+
+function randomDelay(limit: RandomDelayLimit, details?: string): Promise<void> {
+    if (limit.lower > limit.upper) {
+        const temp = limit.lower;
+        limit.lower = limit.upper;
+        limit.upper = temp
+    }
+
+    const delay = Math.floor(Math.random() * (limit.upper - limit.lower) + limit.lower);
+
+    if (details) {
+        console.log(`[RATE LIMITING]: Waiting for ${delay} milliseconds. ${details}`)
+    }
+
+    return new Promise(resolve => setTimeout(resolve, delay))
+}
+
+export async function fetchUser(username: string, session?: SessionData): Promise<User> {
     const response = await fetch(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
         headers: {
             "Sec-Fetch-Site": "same-origin",
             "X-IG-App-ID": "936619743392459",
+            "Cookie": sessionToCookie(session)
         }
     })
-    console.dir(response);
 
     const user = (await response.json() as {
         data: {
@@ -26,98 +66,184 @@ export async function fetchUser(username: string, session: SessionData): Promise
                 full_name: string,
                 username: string,
                 profile_pic_url: string,
-                is_private: boolean
+                is_private: boolean,
+                followed_by_viewer: boolean,
+                is_business_account: boolean,
+                is_professional_account: boolean
             }
         }
     }).data.user
 
-    console.dir({user});
-    const fetchedFollower: User[] = await getFollower({targetUserId: user.id, session});
-    return {
-        pk: user.id,
-        name: user.full_name,
-        username: user.username,
-        follower: fetchedFollower,
-        imageURL: user.profile_pic_url ? new URL(user.profile_pic_url) : null,
-        private: user.is_private,
+    const mapped = {
+        id: user.id,
+        profile: {
+            name: user.full_name,
+            username: user.username,
+            imageURL: user.profile_pic_url ? new URL(user.profile_pic_url) : null,
+        },
+        personal: !user.is_business_account && !user.is_professional_account,
+        public: !user.is_private
     };
+
+    if (session) mapped["private"] = !user.followed_by_viewer && user.is_private;
+
+    return mapped;
 }
 
-export async function getGenerations({gen, username, session}: {
-    gen: number,
-    username: string,
-    session: SessionData
-}): Promise<User> {
-    const rootUser: User = await fetchUser(username, session);
-    console.dir(rootUser);
+async function rateLimiter({graph, user, phase, batchCount, rateLimit}: {
+    graph: UserGraph,
+    user: User,
+    phase: number,
+    batchCount: number
+    rateLimit: RateLimits
+}) {
+    const phaseProgression = Math.floor(Object.entries(graph).length / (rateLimit.batchSize - batchCount * 25))
 
-    const isPrivate = (user: User, gen: number) => {
-        console.dir({user, gen})
+    if (phase < phaseProgression) {
+        printGraph(graph)
 
-        return false;
-    }
+        const task = `(Task: ${user.profile.username})`
 
-    let currentGeneration: User[] = [rootUser];
-    for (let i = 0; i < gen; i++) {
-        let nextGeneration: User[] = [];
-        for (const parentUser of currentGeneration) {
-            const follower = [...parentUser.follower];
+        if (phaseProgression > rateLimit.batchCount) {
+            await randomDelay(
+                rateLimit.delay.daily,
+                `Reached daily limit. ${task}`
+            )
 
-            while(follower.length >= 0) {
-                const batch = follower.slice(0, 10);
-                (await Promise.all(batch.map(
-                    async childUser => {
-                        return {
-                            ...childUser,
-                            follower: isPrivate(parentUser, gen) ? [] : await getFollower({session, targetUserId: childUser.pk})
-                        }
-                    }
-                ))).forEach(childUser => nextGeneration.push(childUser))
-                await new Promise<void>(resolve => setTimeout(() => resolve(), 10 * 1000))
-            }
+            return 0
+        } else {    // Delay after
+            await randomDelay(
+                rateLimit.delay.batches,
+                `Batch limit reached. ${task}.`
+            )
+
+            return phaseProgression
         }
-        currentGeneration = nextGeneration;
     }
-    return rootUser;
+
+    // delay between retrieving the next follower page
+    await randomDelay(rateLimit.delay.pages)
+
+    return phase
 }
 
-async function getFollower({session, maxID, targetUserId}: {
-    session: SessionData, targetUserId: number, maxID?: string
-}): Promise<User[]> {
-    const response = await fetch(`https://www.instagram.com/api/v1/friendships/${targetUserId}/followers/?max_id=${maxID != undefined ? maxID : ''}`, {
+export function printGraph(graph: UserGraph) {
+    console.table(Object.values(graph).map(user => {
+        return {
+            id: user.id,
+            username: user.profile.username,
+            private: user.private,
+            followerCount: user.followerIds?.length,
+            firstFollowers: user.followerIds?.map(id => graph[id].profile.username)
+        }
+    }))
+}
+
+export async function getFollowerGraph({gen, root, session, rateLimit}: {
+    gen: number,
+    root: User,
+    session: SessionData,
+    rateLimit: RateLimits
+}): Promise<UserGraph> {
+    const graph: UserGraph = {[root.id]: root}
+
+    if (root.private) {
+        return graph
+    }
+
+    const done: Set<number> = new Set()
+
+    for (let i = 0; i <= gen; i++) {
+        const open = Object.keys(graph)
+            .filter(userId => !done.has(parseInt(userId, 10)))
+            .map(openIds => parseInt(openIds, 10))
+
+        if (open.length < 1) break;  // no open task, skip remaining generations
+
+        while (open.length > 0) {
+            let phase = 0
+
+            const batch = open.splice(0, Math.floor(rateLimit.batchSize / 100)).map(async task => {
+                let nextPage = undefined
+                graph[task].followerIds = graph[task].followerIds ?? []
+
+                while (nextPage !== null) {
+                    const followers = await fetchFollowers({
+                        session,
+                        targetUser: graph[task],
+                        nextPage
+                    })
+
+                    graph[task].followerIds.push(...followers.page.map(follower => follower.id))
+                    followers.page.forEach(follower => {
+                        if (!graph[follower.id]) graph[follower.id] = follower;
+                    })
+
+                    followers.page.filter(follower => follower.private)
+                        .map(follower => follower.id)
+                        .forEach(id => done.add(id))
+
+                    nextPage = followers.nextPage
+
+                    const userCount = Object.keys(graph).length;
+                    console.dir({user: userCount, open: userCount - done.size, done: done.size})
+
+                    phase = await rateLimiter({
+                        graph,
+                        user: graph[task],
+                        phase,
+                        rateLimit,
+                        batchCount: batch.length
+                    })
+                }
+
+                done.add(task);
+            });
+
+            await Promise.all(batch)
+        }
+    }
+
+    return graph
+}
+
+async function fetchFollowers({session, targetUser, nextPage}: {
+    session: SessionData, targetUser: User, nextPage?: string
+}): Promise<{ page: User[], nextPage: string }> {
+    const query = nextPage ? `?max_id=${nextPage}` : '';
+    const response = await fetch(`https://www.instagram.com/api/v1/friendships/${targetUser.id}/followers/${query}`, {
         headers: {
             "Sec-Fetch-Site": "same-origin",
             "X-IG-App-ID": "936619743392459",
-            "Cookie": `sessionid=${session.id}; ds_user_id=${session.user.id}`,
+            "Cookie": sessionToCookie(session),
         }
     })
 
-    const followerList = (await response.json()) as {
+    const page = (await response.json()) as {
         users: {
-            id: string,
+            id: number,
             full_name: string,
             username: string,
             profile_pic_url: string,
             is_private: boolean
         }[],
-        next_max_id: string
+        next_max_id?: string | null
     }
-    console.dir(followerList.users[0].username);
-    const users = followerList.users.map((user) => {
-        return {
-            pk: parseInt(user.id, 10),
-            username: user.username,
-            name: user.full_name,
-            imageURL: new URL(user.profile_pic_url),
-            private: user.is_private
-        } as User
-    });
 
-    if (followerList.next_max_id != undefined) {
-        const nextUsers = await getFollower({session, targetUserId, maxID: followerList.next_max_id});
-        return users.concat(nextUsers);
-    } else {
-        return users;
+    return {
+        page: page.users.map((user) => {
+            return {
+                id: user.id,
+                profile: {
+                    username: user.username,
+                    name: user.full_name,
+                    imageURL: new URL(user.profile_pic_url)
+                },
+                public: !user.is_private,
+                private: user.is_private && targetUser.id != session.user.id
+            }
+        }),
+        nextPage: page.next_max_id ?? null
     }
 }
 

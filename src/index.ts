@@ -9,7 +9,7 @@ import {
     verify2FA
 } from "./instagram/login";
 import {ExitPromptError} from "@inquirer/prompts";
-import {getGenerations} from "./instagram/follower";
+import {fetchUser, getFollowerGraph, printGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
 
 
@@ -84,9 +84,31 @@ try {
         default: session.user.username
     })
 
-    const rootUser = await getGenerations({gen: 1, username: rootUsername, session})
+    const rootUser = await fetchUser(rootUsername.trim(), session);
+    console.dir(rootUser)
 
-    console.dir({rootUser, followerCount: rootUser.follower.length})
+    const graph = await getFollowerGraph({
+        gen: 0, root: rootUser, session, rateLimit: {
+            batchSize: 2000,
+            batchCount: 15,
+            delay: {
+                pages: {
+                    upper: 2500,
+                    lower: 500
+                },
+                batches: {
+                    upper: 30 * 60 * 1000,
+                    lower: 20 * 60 * 1000
+                },
+                daily: {
+                    upper: 30 * 60 * 60 * 1000,
+                    lower: 25 * 60 * 60 * 1000
+                }
+            }
+        }
+    })
+
+    printGraph(graph)
 } catch (e) {
     if (!(e instanceof ExitPromptError)) {
         console.error(e)
