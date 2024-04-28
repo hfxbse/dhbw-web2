@@ -85,9 +85,9 @@ export async function getFollowerGraph({root, session, limits}: {
     const done: Set<number> = new Set()
 
     for (let i = 0; i <= limits.depth.generations; i++) {
-        const open = Object.keys(graph)
-            .filter(userId => !done.has(parseInt(userId, 10)))
-            .map(openIds => parseInt(openIds, 10))
+        const open = Object.values(graph)
+            .filter(user => !done.has(user.id))
+            .map(user => user.id)
 
         if (open.length < 1) break;  // no open task, skip remaining generations
 
