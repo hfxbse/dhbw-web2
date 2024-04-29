@@ -27,7 +27,7 @@ export async function fetchUser(username: string, session?: SessionData): Promis
     const user = (await response.json() as {
         data: {
             user: {
-                id: number,
+                id: string,
                 full_name: string,
                 username: string,
                 profile_pic_url: string,
@@ -40,7 +40,7 @@ export async function fetchUser(username: string, session?: SessionData): Promis
     }).data.user
 
     const mapped = {
-        id: user.id,
+        id: parseInt(user.id, 10),
         profile: {
             name: user.full_name,
             username: user.username,
@@ -50,7 +50,7 @@ export async function fetchUser(username: string, session?: SessionData): Promis
         public: !user.is_private
     };
 
-    if (session) mapped["private"] = !user.followed_by_viewer && user.is_private;
+    if (session) mapped["private"] = mapped.id !== session.user.id && !user.followed_by_viewer && user.is_private;
 
     return mapped;
 }
