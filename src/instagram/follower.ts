@@ -71,6 +71,25 @@ export function printGraph(graph: UserGraph) {
     }))
 }
 
+function addFollowerToGraph({graph, followers, done, target}: {
+    graph: UserGraph,
+    followers: User[],
+    done: Set<number>,
+    target: number
+},) {
+    const followerIds = new Set(graph[target].followerIds)
+    followers.forEach(follower => followerIds.add(follower.id))
+
+    graph[target].followerIds = [...followerIds]
+    followers.forEach(follower => {
+        if (!graph[follower.id]) graph[follower.id] = follower;
+    })
+
+    followers.filter(follower => follower.private)
+        .map(follower => follower.id)
+        .forEach(id => done.add(id))
+}
+
 export async function getFollowerGraph({root, session, limits}: {
     root: User,
     session: SessionData,
@@ -104,17 +123,7 @@ export async function getFollowerGraph({root, session, limits}: {
                         nextPage
                     })
 
-                    const followerIds = new Set(graph[task].followerIds)
-                    followers.page.forEach(follower => followerIds.add(follower.id))
-
-                    graph[task].followerIds = [...followerIds]
-                    followers.page.forEach(follower => {
-                        if (!graph[follower.id]) graph[follower.id] = follower;
-                    })
-
-                    followers.page.filter(follower => follower.private)
-                        .map(follower => follower.id)
-                        .forEach(id => done.add(id))
+                    addFollowerToGraph({graph, followers: followers.page, done, target: task})
 
                     nextPage = followers.nextPage
 
