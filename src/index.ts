@@ -101,7 +101,12 @@ async function wholeNumberPrompt({message, defaultValue}: { message: string, def
     }).then(input => parseInt(input, 10))
 }
 
-let graph: UserGraph
+let graph: UserGraph = {}
+
+process.on('SIGINT', function() {
+    console.log(JSON.stringify(graph))
+    printGraph(graph)
+});
 
 try {
     const existingSession = await prompt.confirm({message: "Use an existing session id?", default: false});
