@@ -4,7 +4,7 @@ import {User, UserGraph} from "./user";
 import {ReadableStream} from "node:stream/web";
 
 export enum FollowerFetcherEventTypes {
-    UPDATE, RATE_LIMIT_BATCH, RATE_LIMIT_DAILY, DEPTH_LIMIT
+    UPDATE, RATE_LIMIT_BATCH, RATE_LIMIT_DAILY, DEPTH_LIMIT_FOLLOWER, DEPTH_LIMIT_FOLLOWING
 }
 
 export interface FollowerFetcherAddition {
@@ -20,7 +20,8 @@ export interface FollowerFetcherEvent {
     user: User,
     graph: UserGraph
     added?: FollowerFetcherAddition,
-    delay?: number
+    delay?: number,
+    amount?: number
 }
 
 function randomDelay(limit: RandomDelayLimit) {
@@ -127,9 +128,40 @@ function addFollowerToGraph({graph, followers, done, target, controller}: {
     })
 }
 
-export function getFollowerGraph({root, session, limits}: {
+function addFollowingToGraph({graph, following, done, task, controller}: {
+    graph: UserGraph,
+    following: User[],
+    done: Set<number>,
+    task: number,
+    controller: ReadableStreamDefaultController<FollowerFetcherEvent>
+},) {
+    following.filter(following => graph[following.id] !== undefined).forEach(user => addFollowerToGraph({
+        graph,
+        followers: [graph[task]],
+        done,
+        controller,
+        target: user.id
+    }))
+
+    following.filter(following => graph[following.id] === undefined).forEach(user => {
+        graph[user.id] = {
+            ...user,
+            followerIds: [task]
+        };
+
+        controller.enqueue({
+            graph: {...graph},
+            type: FollowerFetcherEventTypes.UPDATE,
+            user,
+            added: {users: [user], progress: {done: done.size}, followers: [task]}
+        })
+    })
+}
+
+export function getFollowerGraph({root, session, limits, includeFollowing}: {
     root: User,
     session: SessionData,
+    includeFollowing: boolean,
     limits: Limits
 }): ReadableStream<FollowerFetcherEvent> {
     const graph: UserGraph = {[root.id]: root}
@@ -150,20 +182,22 @@ export function getFollowerGraph({root, session, limits}: {
                     graph
                 })
 
-                return Promise.resolve(() => controller.close())
+                controller.close()
+                return
             }
 
-            await createFollowerGraph({limits, graph, session, controller});
+            await createFollowerGraph({limits, graph, session, controller, includeFollowing});
             return controller.close();
         },
     })
 }
 
-async function createFollowerGraph({controller, limits, graph, session}: {
+async function createFollowerGraph({controller, limits, graph, session, includeFollowing}: {
     controller: ReadableStreamDefaultController<FollowerFetcherEvent>,
     graph: UserGraph,
     limits: Limits,
-    session: SessionData
+    session: SessionData,
+    includeFollowing: boolean,
 }) {
     const done: Set<number> = new Set()
     let phase = 0
@@ -177,35 +211,91 @@ async function createFollowerGraph({controller, limits, graph, session}: {
 
         while (open.length > 0) {
             const batch = open.splice(0, Math.floor(limits.rate.batchSize / 100)).map(async task => {
-                let nextPage = undefined
                 graph[task].followerIds = graph[task].followerIds ?? []
 
-                while (nextPage !== null) {
-                    const followers = await fetchFollowers({
-                        session,
-                        targetUser: graph[task],
-                        nextPage
-                    })
+                const followers = async () => {
+                    let nextPage = undefined
 
-                    addFollowerToGraph({graph, followers: followers.page, done, target: task, controller})
+                    while (nextPage !== null) {
+                        const followers = await fetchFollowers({
+                            session,
+                            targetUser: graph[task],
+                            nextPage,
+                            direction: FollowerDirection.FOLLOWER
+                        })
 
-                    nextPage = followers.nextPage
+                        addFollowerToGraph({graph, followers: followers.page, done, target: task, controller})
 
-                    const userFollowerCount = graph[task].followerIds.length;
-                    if (limits.depth.followers > 0 && userFollowerCount >= limits.depth.followers) {
-                        controller.enqueue({type: FollowerFetcherEventTypes.DEPTH_LIMIT, user: graph[task], graph})
-                        break;
+                        nextPage = followers.nextPage
+
+                        const userFollowerCount = graph[task].followerIds.length;
+                        if (limits.depth.followers > 0 && userFollowerCount >= limits.depth.followers) {
+                            controller.enqueue({
+                                type: FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER,
+                                user: graph[task],
+                                graph,
+                                amount: userFollowerCount
+                            })
+                            break;
+                        }
+
+                        phase = await rateLimiter({
+                            graph,
+                            user: graph[task],
+                            phase,
+                            limits: limits,
+                            batchCount: batch.length,
+                            controller,
+                        })
                     }
-
-                    phase = await rateLimiter({
-                        graph,
-                        user: graph[task],
-                        phase,
-                        limits: limits,
-                        batchCount: batch.length,
-                        controller,
-                    })
                 }
+
+                const following = async () => {
+                    let nextPage = undefined
+                    let followingCount = 0
+
+                    while (nextPage !== null) {
+                        const following = await fetchFollowers({
+                            session,
+                            targetUser: graph[task],
+                            nextPage,
+                            direction: FollowerDirection.FOLLOWING
+                        })
+
+                        addFollowingToGraph({
+                            graph,
+                            following: following.page,
+                            done,
+                            controller,
+                            task: graph[task].id
+                        })
+
+                        followingCount += following.page.length
+
+                        if (limits.depth.followers > 0 && followingCount >= limits.depth.followers) {
+                            controller.enqueue({
+                                type: FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING,
+                                user: graph[task],
+                                graph: {...graph},
+                                amount: followingCount
+                            })
+                            break;
+                        }
+
+                        nextPage = following.nextPage;
+
+                        phase = await rateLimiter({
+                            graph,
+                            user: graph[task],
+                            phase,
+                            batchCount: batch.length,
+                            limits,
+                            controller
+                        })
+                    }
+                }
+
+                await Promise.all([followers(), (includeFollowing ? following() : Promise.resolve())])
 
                 done.add(task);
             });
@@ -217,11 +307,17 @@ async function createFollowerGraph({controller, limits, graph, session}: {
     return graph
 }
 
-async function fetchFollowers({session, targetUser, nextPage}: {
-    session: SessionData, targetUser: User, nextPage?: string
+enum FollowerDirection {
+    FOLLOWER, FOLLOWING
+}
+
+async function fetchFollowers({session, targetUser, nextPage, direction}: {
+    session: SessionData, targetUser: User, nextPage?: string, direction: FollowerDirection
 }): Promise<{ page: User[], nextPage: string }> {
     const query = nextPage ? `?max_id=${nextPage}` : '';
-    const response = await fetch(`https://www.instagram.com/api/v1/friendships/${targetUser.id}/followers/${query}`, {
+    const directionPath = direction === FollowerDirection.FOLLOWING ? 'following' : 'followers'
+
+    const response = await fetch(`https://www.instagram.com/api/v1/friendships/${targetUser.id}/${directionPath}/${query}`, {
         headers: {
             "Sec-Fetch-Site": "same-origin",
             "X-IG-App-ID": "936619743392459",
@@ -231,7 +327,7 @@ async function fetchFollowers({session, targetUser, nextPage}: {
 
     const page = (await response.json()) as {
         users: {
-            id: number,
+            id: string,
             full_name: string,
             username: string,
             profile_pic_url: string,
@@ -243,7 +339,7 @@ async function fetchFollowers({session, targetUser, nextPage}: {
     return {
         page: page.users.map((user) => {
             return {
-                id: user.id,
+                id: parseInt(user.id, 10),
                 profile: {
                     username: user.username,
                     name: user.full_name,

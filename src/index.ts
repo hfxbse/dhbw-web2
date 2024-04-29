@@ -101,6 +101,7 @@ async function wholeNumberPrompt({message, defaultValue}: { message: string, def
     }).then(input => parseInt(input, 10))
 }
 
+let graph: UserGraph
 
 try {
     const existingSession = await prompt.confirm({message: "Use an existing session id?", default: false});
@@ -118,10 +119,13 @@ try {
     })
 
     const followers = await wholeNumberPrompt({
-        message: "Maximal follower count to include for each user: ", defaultValue: 1000
+        message: "Maximal follower count to include for each user: ", defaultValue: 250
     })
 
+    const includeFollowing = await prompt.confirm({message: "Include following?", default: true})
+
     const reader = getFollowerGraph({
+        includeFollowing,
         root,
         session,
         limits: {
@@ -134,8 +138,8 @@ try {
                 batchCount: 15,
                 delay: {
                     pages: {
-                        upper: 2500,
-                        lower: 500
+                        upper: 5000,
+                        lower: 3000
                     },
                     batches: {
                         upper: 35 * 60 * 1000,
@@ -150,8 +154,6 @@ try {
         }
     }).getReader()
 
-    let graph: UserGraph
-
     while (true) {
         const {done, value} = await reader.read()
         if (done) break;
@@ -160,8 +162,10 @@ try {
 
         const identifier = `(User: ${value.user.profile.username})`
 
-        if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT) {
-            console.log(`Reached the maximum amount of followers to include. ${identifier}`)
+        if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER) {
+            console.log(`Reached the maximum amount of followers to include, currently at ${value.amount}. ${identifier}`)
+        } else if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING) {
+            console.log(`Reached the maximum amount of followed users to include, currently at ${value.amount}. ${identifier}`)
         } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_BATCH) {
             printGraph(value.graph)
             console.log(`Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
@@ -170,10 +174,12 @@ try {
             console.log(`Reached follower daily limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
         } else if (value.type === FollowerFetcherEventTypes.UPDATE) {
             const total = Object.entries(value.graph).length
+            const followers = value.added.followers.length;
+            const users = value.added.users.length
 
             console.log(
-                `Added ${value.added.followers.length} to ${value.user.profile.username}, ` +
-                `of which ${value.added.users.length} are newly discovered users. ` +
+                `Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''} to ${value.user.profile.username}. ` +
+                `Discovered ${users > 0 ? users : 'no'} new user${users > 1 ? 's' : ''}. ` +
                 `Total user count: ${total}, completely queried users ${value.added.progress.done}.`
             )
         }
@@ -185,3 +191,6 @@ try {
         console.error(e)
     }
 }
+
+console.log(JSON.stringify(graph))
+printGraph(graph)
