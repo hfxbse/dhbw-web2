@@ -233,6 +233,15 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
 
                         nextPage = followers.nextPage
 
+                        phase = await rateLimiter({
+                            graph,
+                            user: graph[task],
+                            phase,
+                            limits: limits,
+                            batchCount: batch.length,
+                            controller,
+                        })
+
                         const userFollowerCount = graph[task].followerIds.length;
                         if (limits.depth.followers > 0 && userFollowerCount >= limits.depth.followers) {
                             excess(userFollowerCount, limits.depth.followers, followers.page)
@@ -246,15 +255,6 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                             })
                             break;
                         }
-
-                        phase = await rateLimiter({
-                            graph,
-                            user: graph[task],
-                            phase,
-                            limits: limits,
-                            batchCount: batch.length,
-                            controller,
-                        })
                     }
                 }
 
@@ -278,6 +278,16 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                             task: graph[task].id
                         })
 
+
+                        phase = await rateLimiter({
+                            graph,
+                            user: graph[task],
+                            phase,
+                            batchCount: batch.length,
+                            limits,
+                            controller
+                        })
+
                         followingCount += following.page.length
 
                         if (limits.depth.followers > 0 && followingCount >= limits.depth.followers) {
@@ -294,15 +304,6 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                         }
 
                         nextPage = following.nextPage;
-
-                        phase = await rateLimiter({
-                            graph,
-                            user: graph[task],
-                            phase,
-                            batchCount: batch.length,
-                            limits,
-                            controller
-                        })
                     }
                 }
 
