@@ -169,9 +169,9 @@ try {
         const identifier = `(User: ${value.user.profile.username})`
 
         if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER) {
-            console.log(`Reached the maximum amount of followers to include, currently at ${value.amount}. ${identifier}`)
+            console.log(`Reached the maximum amount of followers to include. Currently included are ${value.amount}. ${identifier}`)
         } else if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING) {
-            console.log(`Reached the maximum amount of followed users to include, currently at ${value.amount}. ${identifier}`)
+            console.log(`Reached the maximum amount of followed users to include. Currently included are ${value.amount}. ${identifier}`)
         } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_BATCH) {
             printGraph(value.graph)
             console.log(`Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
