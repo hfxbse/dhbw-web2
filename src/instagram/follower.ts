@@ -83,6 +83,7 @@ export async function getFollowerGraph({root, session, limits}: {
     }
 
     const done: Set<number> = new Set()
+    let phase = 0
 
     for (let i = 0; i <= limits.depth.generations; i++) {
         const open = Object.values(graph)
@@ -92,8 +93,6 @@ export async function getFollowerGraph({root, session, limits}: {
         if (open.length < 1) break;  // no open task, skip remaining generations
 
         while (open.length > 0) {
-            let phase = 0
-
             const batch = open.splice(0, Math.floor(limits.rate.batchSize / 100)).map(async task => {
                 let nextPage = undefined
                 graph[task].followerIds = graph[task].followerIds ?? []
