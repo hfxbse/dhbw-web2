@@ -1,4 +1,5 @@
 import * as prompt from '@inquirer/prompts';
+import {ExitPromptError} from '@inquirer/prompts';
 import {
     encryptPassword,
     fetchVerification,
@@ -8,10 +9,9 @@ import {
     VerificationData,
     verify2FA
 } from "./instagram/login";
-import {ExitPromptError} from "@inquirer/prompts";
-import {getFollowerGraph, printGraph} from "./instagram/follower";
+import {FollowerFetcherEventTypes, getFollowerGraph, printGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
-import {fetchUser} from "./instagram/user";
+import {fetchUser, UserGraph} from "./instagram/user";
 
 
 async function authenticate(): Promise<SessionData> {
@@ -121,7 +121,7 @@ try {
         message: "Maximal follower count to include for each user: ", defaultValue: 1000
     })
 
-    const graph = await getFollowerGraph({
+    const reader = getFollowerGraph({
         root,
         session,
         limits: {
@@ -148,9 +148,36 @@ try {
                 }
             }
         }
-    })
+    }).getReader()
 
-    console.log(JSON.stringify(graph))
+    let graph: UserGraph
+
+    while (true) {
+        const {done, value} = await reader.read()
+        if (done) break;
+
+        graph = value.graph
+
+        const identifier = `(User: ${value.user.profile.username})`
+
+        if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT) {
+            console.log(`Reached the maximum amount of followers to include. ${identifier}`)
+        } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_BATCH) {
+            printGraph(value.graph)
+            console.log(`Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+        } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_DAILY) {
+            printGraph(value.graph)
+            console.log(`Reached follower daily limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+        } else if (value.type === FollowerFetcherEventTypes.UPDATE) {
+            const total = Object.entries(value.graph).length
+
+            console.log(
+                `Added ${value.added.followers.length} to ${value.user.profile.username}, ` +
+                `of which ${value.added.users.length} are newly discovered users. ` +
+                `Total user count: ${total}, completely queried users ${value.added.progress.done}.`
+            )
+        }
+    }
 
     printGraph(graph)
 } catch (e) {

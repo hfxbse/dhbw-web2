@@ -1,31 +1,47 @@
 import SessionData, {sessionToCookie} from "./session-data";
 import {RandomDelayLimit, Limits} from "./limits";
 import {User, UserGraph} from "./user";
+import {ReadableStream} from "node:stream/web";
 
+export enum FollowerFetcherEventTypes {
+    UPDATE, RATE_LIMIT_BATCH, RATE_LIMIT_DAILY, DEPTH_LIMIT
+}
 
-function randomDelay(limit: RandomDelayLimit, details?: string): Promise<void> {
+export interface FollowerFetcherAddition {
+    followers: number[],
+    users: User[],
+    progress: {
+        done: number
+    }
+}
+
+export interface FollowerFetcherEvent {
+    type: FollowerFetcherEventTypes,
+    user: User,
+    graph: UserGraph
+    added?: FollowerFetcherAddition,
+    delay?: number
+}
+
+function randomDelay(limit: RandomDelayLimit) {
     if (limit.lower > limit.upper) {
         const temp = limit.lower;
         limit.lower = limit.upper;
         limit.upper = temp
     }
 
-    const delay = Math.floor(Math.random() * (limit.upper - limit.lower) + limit.lower);
-
-    if (details) {
-        console.log(`[RATE LIMITING]: Waiting for ${delay} milliseconds. ${details}`)
-    }
-
-    return new Promise(resolve => setTimeout(resolve, delay))
+    const time = Math.floor(Math.random() * (limit.upper - limit.lower) + limit.lower);
+    return {time, delay: new Promise(resolve => setTimeout(resolve, time))}
 }
 
 
-async function rateLimiter({graph, user, phase, batchCount, limits}: {
+async function rateLimiter({graph, user, phase, batchCount, limits, controller}: {
     graph: UserGraph,
     user: User,
     phase: number,
     batchCount: number
-    limits: Limits
+    limits: Limits,
+    controller: ReadableStreamDefaultController<FollowerFetcherEvent>
 }) {
     const phaseProgression = Math.floor(
         Object.entries(graph).length / (limits.rate.batchSize - batchCount * 25)
@@ -34,27 +50,33 @@ async function rateLimiter({graph, user, phase, batchCount, limits}: {
     if (phase < phaseProgression) {
         printGraph(graph)
 
-        const task = `(Task: ${user.profile.username})`
-
         if (phaseProgression > limits.rate.batchCount) {
-            await randomDelay(
-                limits.rate.delay.daily,
-                `Reached daily limit. ${task}`
-            )
+            const delay = randomDelay(limits.rate.delay.daily)
+            controller.enqueue({
+                type: FollowerFetcherEventTypes.RATE_LIMIT_DAILY,
+                user: user,
+                delay: delay.time,
+                graph
+            })
 
+            await delay.delay
             return 0
-        } else {    // Delay after
-            await randomDelay(
-                limits.rate.delay.batches,
-                `Batch limit reached. ${task}.`
-            )
+        } else {
+            const delay = randomDelay(limits.rate.delay.daily)
+            controller.enqueue({
+                type: FollowerFetcherEventTypes.RATE_LIMIT_BATCH,
+                user: user,
+                delay: delay.time,
+                graph
+            })
 
-            return phaseProgression
+            await delay.delay
+            return phase
         }
     }
 
     // delay between retrieving the next follower page
-    await randomDelay(limits.rate.delay.pages)
+    await randomDelay(limits.rate.delay.pages).delay
 
     return phase
 }
@@ -71,36 +93,78 @@ export function printGraph(graph: UserGraph) {
     }))
 }
 
-function addFollowerToGraph({graph, followers, done, target}: {
+function addFollowerToGraph({graph, followers, done, target, controller}: {
     graph: UserGraph,
     followers: User[],
     done: Set<number>,
-    target: number
+    target: number,
+    controller: ReadableStreamDefaultController<FollowerFetcherEvent>
 },) {
     const followerIds = new Set(graph[target].followerIds)
-    followers.forEach(follower => followerIds.add(follower.id))
+    const additionalFollowers = followers
+        .map(follower => follower.id)
+        .filter(id => !followerIds.has(id))
 
-    graph[target].followerIds = [...followerIds]
-    followers.forEach(follower => {
-        if (!graph[follower.id]) graph[follower.id] = follower;
-    })
+    graph[target].followerIds = [...followerIds, ...additionalFollowers]
+    const additionalUsers = followers.filter(follower => graph[follower.id] === undefined)
+    additionalUsers.forEach(user => graph[user.id] = user)
 
-    followers.filter(follower => follower.private)
+    additionalUsers.filter(follower => follower.private)
         .map(follower => follower.id)
         .forEach(id => done.add(id))
+
+    controller.enqueue({
+        type: FollowerFetcherEventTypes.UPDATE,
+        user: graph[target],
+        added: {
+            followers: additionalFollowers,
+            users: additionalUsers,
+            progress: {
+                done: done.size
+            }
+        },
+        graph
+    })
 }
 
-export async function getFollowerGraph({root, session, limits}: {
+export function getFollowerGraph({root, session, limits}: {
     root: User,
     session: SessionData,
     limits: Limits
-}): Promise<UserGraph> {
+}): ReadableStream<FollowerFetcherEvent> {
     const graph: UserGraph = {[root.id]: root}
 
-    if (root.private) {
-        return graph
-    }
+    return new ReadableStream<FollowerFetcherEvent>({
+        async start(controller: ReadableStreamDefaultController<FollowerFetcherEvent>) {
+            if (root.private) {
+                controller.enqueue({
+                    type: FollowerFetcherEventTypes.UPDATE,
+                    user: root,
+                    added: {
+                        followers: [],
+                        users: [root],
+                        progress: {
+                            done: 1
+                        }
+                    },
+                    graph
+                })
 
+                return Promise.resolve(() => controller.close())
+            }
+
+            await createFollowerGraph({limits, graph, session, controller});
+            return controller.close();
+        },
+    })
+}
+
+async function createFollowerGraph({controller, limits, graph, session}: {
+    controller: ReadableStreamDefaultController<FollowerFetcherEvent>,
+    graph: UserGraph,
+    limits: Limits,
+    session: SessionData
+}) {
     const done: Set<number> = new Set()
     let phase = 0
 
@@ -123,16 +187,13 @@ export async function getFollowerGraph({root, session, limits}: {
                         nextPage
                     })
 
-                    addFollowerToGraph({graph, followers: followers.page, done, target: task})
+                    addFollowerToGraph({graph, followers: followers.page, done, target: task, controller})
 
                     nextPage = followers.nextPage
 
-                    const userCount = Object.keys(graph).length;
-                    console.dir({user: userCount, open: userCount - done.size, done: done.size})
-
                     const userFollowerCount = graph[task].followerIds.length;
                     if (limits.depth.followers > 0 && userFollowerCount >= limits.depth.followers) {
-                        console.log(`[DEPTH LIMITING]: Reached maximal follower count to include. (Task: ${graph[task].profile.username}).`)
+                        controller.enqueue({type: FollowerFetcherEventTypes.DEPTH_LIMIT, user: graph[task], graph})
                         break;
                     }
 
@@ -141,7 +202,8 @@ export async function getFollowerGraph({root, session, limits}: {
                         user: graph[task],
                         phase,
                         limits: limits,
-                        batchCount: batch.length
+                        batchCount: batch.length,
+                        controller,
                     })
                 }
 
