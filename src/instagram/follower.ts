@@ -192,6 +192,10 @@ export function getFollowerGraph({root, session, limits, includeFollowing}: {
     })
 }
 
+function excess(current: number, limit: number, addition: any[]) {
+    return addition.slice(addition.length - (current - limit))
+}
+
 async function createFollowerGraph({controller, limits, graph, session, includeFollowing}: {
     controller: ReadableStreamDefaultController<FollowerFetcherEvent>,
     graph: UserGraph,
@@ -210,7 +214,8 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
         if (open.length < 1) break;  // no open task, skip remaining generations
 
         while (open.length > 0) {
-            const batch = open.splice(0, Math.floor(limits.rate.batchSize / 100)).map(async task => {
+            const batchSize = Math.floor(limits.rate.batchSize / 100)
+            const batch = open.splice(0, batchSize < 1 ? 1 : batchSize).map(async task => {
                 graph[task].followerIds = graph[task].followerIds ?? []
 
                 const followers = async () => {
@@ -230,6 +235,9 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
 
                         const userFollowerCount = graph[task].followerIds.length;
                         if (limits.depth.followers > 0 && userFollowerCount >= limits.depth.followers) {
+                            excess(userFollowerCount, limits.depth.followers, followers.page)
+                                .forEach(user => done.add(user.id))
+
                             controller.enqueue({
                                 type: FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER,
                                 user: graph[task],
@@ -273,6 +281,9 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                         followingCount += following.page.length
 
                         if (limits.depth.followers > 0 && followingCount >= limits.depth.followers) {
+                            excess(followingCount, limits.depth.followers, following.page)
+                                .forEach(user => done.add(user.id))
+
                             controller.enqueue({
                                 type: FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING,
                                 user: graph[task],

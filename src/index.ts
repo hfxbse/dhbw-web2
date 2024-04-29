@@ -106,6 +106,7 @@ let graph: UserGraph = {}
 process.on('SIGINT', function() {
     console.log(JSON.stringify(graph))
     printGraph(graph)
+    process.exit(0)
 });
 
 try {
@@ -139,8 +140,8 @@ try {
                 followers,
             },
             rate: {
-                batchSize: 3000,
-                batchCount: 15,
+                batchSize: 100,
+                batchCount: 2,
                 delay: {
                     pages: {
                         upper: 5000,
