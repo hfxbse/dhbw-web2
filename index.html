@@ -11,47 +11,10 @@
 <div id="graph-container">
     <div class="toolbar">
         <button id="clearColors" class="clearColorsButton">Clear Colors</button>
-        <input id="searchBox" disabled="true" type="text" placeholder="Search...">
-        <button id="logButton" class="logButton">Login</button>
+        <input id="searchBox" type="text" placeholder="Search...">
     </div>
 </div>
 
 <script src="toolbar.js" defer></script>
-<!-- Log-In Modal -->
-<div id="loginModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <span class="close">&times;</span> <!-- Close button added here -->
-        </div>
-        <h2>Login</h2>
-        <div class="input-container">
-            <label for="username">Username:</label>
-            <input type="text" id="username" placeholder="Enter your username">
-        </div>
-        <div class="input-container">
-            <label for="password">Password:</label>
-            <input type="password" id="password" placeholder="Enter your password">
-        </div>
-        <div class="input-container">
-            <button id="loginButton">Login</button>
-        </div>
-    </div>
-</div>
-<!-- Token Modal -->
-<div id="tokenModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <span class="close">&times;</span> <!-- Close button added here -->
-        </div>
-        <h2>Enter Token</h2>
-        <div class="input-container">
-            <label for="token">Token:</label>
-            <input type="text" id="token" placeholder="Enter your token">
-        </div>
-        <div class="input-container">
-            <button id="tokenButton" onclick="handleTokenValidation()">Send</button>
-        </div>
-    </div>
-</div>
 </body>
 </html>

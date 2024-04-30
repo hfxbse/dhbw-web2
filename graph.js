@@ -42,10 +42,8 @@ function chart() {
         .data(d3graph.nodes)
         .join("g")
         .attr("class", "node-group")
-        .append("foreignObject")
-        .attr("clip-path", "url(#imageClip)")
-        .append("iframe")
-        .attr("src", d => {
+        .append("image")
+        .attr("xlink:href", d => {
             const placeholder = "https://woodfibreinsulation.co.uk/wp-content/uploads/2017/04/blank-profile-picture-973460-1-1-1024x1024.png;"
 
             return d.profile.imageURL ?? placeholder;
@@ -54,7 +52,7 @@ function chart() {
         .attr("height", 20)
         .attr("x", -10)
         .attr("y", -10)
-
+        .attr("clip-path", "url(#imageClip)")
         .on("click", clicked);
 
     node.append("title")
@@ -142,6 +140,51 @@ function clearColors() {
     // Optionally, clear the colorGroupList object
     colorGroupList = {};
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    let searchBox = document.getElementById("searchBox");
+    searchBox.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            let userInput = searchBox.value.trim(); // Trim to remove any leading/trailing spaces
+
+            // Find the node in the graph data that matches the user input
+            let selectedNode = d3graph.nodes.find(node => node.profile.username === userInput);
+
+            if (selectedNode) {
+                // Highlight the associated links
+                highlightLinks(selectedNode.id, link); // Pass 'link' as a parameter
+            } else {
+                // Node not found, you can display an error message or handle it accordingly
+                console.log("Node not found!");
+            }
+
+            searchBox.value = ""; // Clear the searchBox value after sending input
+        }
+    });
+});
+
+// Function to highlight the selected node and its associated links
+function highlightLinks(nodeId, link) { // Accept 'link' as a parameter
+    const clickedNodeId = nodeId;
+    const linksToUpdate = link.filter(linkData => linkData.source.id === clickedNodeId || linkData.target.id === clickedNodeId);
+
+    if (!colorGroupList[nodeId]) {
+        colorGroupList[nodeId] = Math.random();
+    }
+
+    const clickedColor = color(colorGroupList[nodeId]);
+    const isColored = linksToUpdate.attr("stroke") === clickedColor.toString();
+
+    if (isColored) {
+        linksToUpdate.transition().duration(500)
+            .attr("stroke", "#999");
+        delete colorGroupList[nodeId];
+    } else {
+        linksToUpdate.transition().duration(500)
+            .attr("stroke", clickedColor);
+    }
+}
+
 
 
 let svgElement = chart();
