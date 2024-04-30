@@ -1,16 +1,16 @@
-import { data } from './createJson.js';
+import {d3graph} from "./createJson.js";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 let colorGroupList = {};
-console.log(data);
+console.dir(d3graph);
 
 function chart() {
     const width = screen.width;
     const height = screen.height;
     const color = d3.scaleSequential(interpolateAngry);
 
-    const simulation = d3.forceSimulation(data.nodes)
-        .force("link", d3.forceLink(data.links).id(d => d.id).distance(50))
+    const simulation = d3.forceSimulation(d3graph.nodes)
+        .force("link", d3.forceLink(d3graph.links).id(d => d.id).distance(50))
         .force("charge", d3.forceManyBody().strength(-300))
         .force("center", d3.forceCenter(width / 2, height / 2))
         .on("tick", ticked);
@@ -26,7 +26,7 @@ function chart() {
     const link = graph.append("g")
         .attr("class", "link")
         .selectAll()
-        .data(data.links)
+        .data(d3graph.links)
         .join("line");
 
     const defs = graph.append("defs");
@@ -39,27 +39,26 @@ function chart() {
     const node = graph.append("g")
         .attr("class", "node")
         .selectAll()
-        .data(data.nodes)
+        .data(d3graph.nodes)
         .join("g")
         .attr("class", "node-group")
-        .append("image")
-        .attr("xlink:href", d => {
-            let url = d.imageURL;
-            if (url == null) {
-                return "https://woodfibreinsulation.co.uk/wp-content/uploads/2017/04/blank-profile-picture-973460-1-1-1024x1024.png";
-            } else {
-                return url;
-            }
+        .append("foreignObject")
+        .attr("clip-path", "url(#imageClip)")
+        .append("iframe")
+        .attr("src", d => {
+            const placeholder = "https://woodfibreinsulation.co.uk/wp-content/uploads/2017/04/blank-profile-picture-973460-1-1-1024x1024.png;"
+
+            return d.profile.imageURL ?? placeholder;
         })
         .attr("width", 20)
         .attr("height", 20)
         .attr("x", -10)
         .attr("y", -10)
-        .attr("clip-path", "url(#imageClip)")
+
         .on("click", clicked);
 
     node.append("title")
-        .text(d => d.username);
+        .text(d => d.profile.username);
 
     node.call(d3.drag()
         .on("start", dragstarted)
