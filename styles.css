@@ -46,7 +46,6 @@ html, body {
 .clearColorsButton {
     padding: 6px;
     width: 8%;
-    /*border-color: #383434;*/
     background-color: #ffffff;
     cursor: pointer;
     margin-left: 1%;

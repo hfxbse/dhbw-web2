@@ -3,11 +3,11 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 let colorGroupList = {};
 console.dir(d3graph);
+const color = d3.scaleSequential(interpolateAngry);
 
 function chart() {
     const width = screen.width;
     const height = screen.height;
-    const color = d3.scaleSequential(interpolateAngry);
 
     const simulation = d3.forceSimulation(d3graph.nodes)
         .force("link", d3.forceLink(d3graph.links).id(d => d.id).distance(50))
@@ -141,51 +141,43 @@ function clearColors() {
     colorGroupList = {};
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-    let searchBox = document.getElementById("searchBox");
-    searchBox.addEventListener("keypress", function(event) {
-        if (event.key === "Enter") {
-            let userInput = searchBox.value.trim(); // Trim to remove any leading/trailing spaces
+let searchBox = document.getElementById("searchBox");
+searchBox.addEventListener("keypress", function (event) {
+    if (event.key === "Enter") {
+        let userInput = searchBox.value.trim(); // Trim to remove any leading/trailing spaces
 
-            // Find the node in the graph data that matches the user input
-            let selectedNode = d3graph.nodes.find(node => node.profile.username === userInput);
+        // Find the node in the graph data that matches the user input
+        let selectedNode = d3graph.nodes.find(node => node.profile.username.startsWith(userInput));
 
-            if (selectedNode) {
-                // Highlight the associated links
-                highlightLinks(selectedNode.id, link); // Pass 'link' as a parameter
-            } else {
-                // Node not found, you can display an error message or handle it accordingly
-                console.log("Node not found!");
-            }
-
-            searchBox.value = ""; // Clear the searchBox value after sending input
+        if (selectedNode) {
+            // Highlight the associated links
+            highlightLinks(selectedNode); // No need to pass 'link' here
+            console.log("Node found!");
+        } else {
+            // Node not found, you can display an error message or handle it accordingly
+            console.log("Node not found!");
         }
-    });
+
+        searchBox.value = ""; // Clear the searchBox value after sending input
+    }
 });
 
 // Function to highlight the selected node and its associated links
-function highlightLinks(nodeId, link) { // Accept 'link' as a parameter
-    const clickedNodeId = nodeId;
-    const linksToUpdate = link.filter(linkData => linkData.source.id === clickedNodeId || linkData.target.id === clickedNodeId);
+function highlightLinks(node) {
+    const clickedNodeId = node.id;
 
-    if (!colorGroupList[nodeId]) {
-        colorGroupList[nodeId] = Math.random();
+    // Select the SVG elements representing the links associated with the clicked node
+    const linksToUpdate = d3.selectAll(".link line")
+        .filter(linkData => linkData.source.id === clickedNodeId || linkData.target.id === clickedNodeId);
+
+    if (!colorGroupList[node.id]) {
+        colorGroupList[node.id] = Math.random();
     }
 
-    const clickedColor = color(colorGroupList[nodeId]);
-    const isColored = linksToUpdate.attr("stroke") === clickedColor.toString();
-
-    if (isColored) {
-        linksToUpdate.transition().duration(500)
-            .attr("stroke", "#999");
-        delete colorGroupList[nodeId];
-    } else {
-        linksToUpdate.transition().duration(500)
-            .attr("stroke", clickedColor);
-    }
+    const clickedColor = color(colorGroupList[node.id]);
+    linksToUpdate.transition().duration(500)
+        .attr("stroke", clickedColor);
 }
-
-
 
 let svgElement = chart();
 document.body.appendChild(svgElement);
