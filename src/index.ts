@@ -49,12 +49,20 @@ async function twoFactor({verification, info}: {
 }
 
 async function readExistingSessionId(): Promise<SessionData> {
-    const sessionId = await prompt.password({message: "Session id: "})
+    while (true) {
+        const sessionId = await prompt.password({message: "Session id: "})
+        const userId = parseInt(sessionId.split("%")[0], 10)
 
-    return {
-        id: sessionId,
-        user: {
-            id: parseInt(sessionId.split("%")[0], 10)
+        if(isNaN(userId)) {
+            console.log("Session id seems to be invalid. Try again.")
+            continue
+        }
+
+        return {
+            id: sessionId,
+            user: {
+                id: parseInt(sessionId.split("%")[0], 10)
+            }
         }
     }
 }
