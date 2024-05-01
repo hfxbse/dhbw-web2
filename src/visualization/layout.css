@@ -1,4 +1,4 @@
-html, body, user-graph {
+html, body, user-graph, user-graph > svg {
     margin: 0;
     padding: 0;
 
