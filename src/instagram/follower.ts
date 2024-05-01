@@ -1,6 +1,6 @@
 import SessionData, {sessionToCookie} from "./session-data";
 import {RandomDelayLimit, Limits} from "./limits";
-import {User, UserGraph} from "./user";
+import {downloadProfilePicture, User, UserGraph} from "./user";
 import {ReadableStream} from "node:stream/web";
 import {hasJsonBody} from "./request";
 
@@ -227,6 +227,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                             session,
                             targetUser: graph[task],
                             nextPage,
+                            limits,
                             direction: FollowerDirection.FOLLOWER
                         })
 
@@ -268,6 +269,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                             session,
                             targetUser: graph[task],
                             nextPage,
+                            limits,
                             direction: FollowerDirection.FOLLOWING
                         })
 
@@ -324,8 +326,8 @@ enum FollowerDirection {
     FOLLOWER, FOLLOWING
 }
 
-async function fetchFollowers({session, targetUser, nextPage, direction}: {
-    session: SessionData, targetUser: User, nextPage?: string, direction: FollowerDirection
+async function fetchFollowers({session, targetUser, nextPage, direction, limits}: {
+    session: SessionData, targetUser: User, nextPage?: string, direction: FollowerDirection, limits: Limits
 }): Promise<{ page: User[], nextPage: string }> {
     const query = nextPage ? `?max_id=${nextPage}` : '';
     const directionPath = direction === FollowerDirection.FOLLOWING ? 'following' : 'followers'
@@ -374,7 +376,10 @@ async function fetchFollowers({session, targetUser, nextPage, direction}: {
                 profile: {
                     username: user.username,
                     name: user.full_name,
-                    imageURL: new URL(user.profile_pic_url)
+                    image: randomDelay({
+                        lower: 0,
+                        upper: limits.rate.delay.pages.upper
+                    }).delay.then(() => downloadProfilePicture(user.profile_pic_url))
                 },
                 public: !user.is_private,
                 private: user.is_private && targetUser.id != session.user.id

@@ -5,7 +5,7 @@ export interface User {
     profile: {
         name: string,
         username: string,
-        imageURL: URL | null,
+        image: Promise<Blob> | null,
     }
     followerIds?: number[],
     private?: boolean,
@@ -44,7 +44,7 @@ export async function fetchUser(username: string, session?: SessionData): Promis
         profile: {
             name: user.full_name,
             username: user.username,
-            imageURL: user.profile_pic_url ? new URL(user.profile_pic_url) : null,
+            image: downloadProfilePicture(user.profile_pic_url)
         },
         personal: !user.is_business_account && !user.is_professional_account,
         public: !user.is_private
@@ -53,4 +53,20 @@ export async function fetchUser(username: string, session?: SessionData): Promis
     if (session) mapped["private"] = mapped.id !== session.user.id && !user.followed_by_viewer && user.is_private;
 
     return mapped;
+}
+
+export async function downloadProfilePicture(source: string | undefined): Promise<Blob> | null {
+    if (!source) return null
+
+    const response = await fetch(source, {
+        headers: {
+            "Sec-Fetch-Site": "same-origin",
+        }
+    })
+
+    if (!response.ok) {
+        throw Error(await response.text())
+    }
+
+    return await response.blob()
 }

@@ -70,6 +70,10 @@ async function readExistingSessionId(): Promise<SessionData> {
     }
 }
 
+async function blobToDataUrl(blob: Blob) {
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    return new URL("data:" + blob.type + ';base64,' + buffer.toString('base64'));
+}
 
 async function rootUser({session}) {
     while (true) {
@@ -80,7 +84,13 @@ async function rootUser({session}) {
             })
 
             const rootUser = await fetchUser(rootUsername.trim(), session);
-            console.dir({...rootUser, profile: {...rootUser.profile, imageURL: rootUser.profile.imageURL.href}})
+            console.dir({
+                ...rootUser,
+                profile: {
+                    ...rootUser.profile,
+                    image: await rootUser.profile.image.then(blobToDataUrl).then(url => url.href)
+                }
+            })
 
             if (await prompt.confirm({message: "Continue with this user?", default: true})) {
                 return rootUser
@@ -103,11 +113,34 @@ async function wholeNumberPrompt({message, defaultValue}: { message: string, def
 
 let graph: UserGraph = {}
 
-process.on('SIGINT', function() {
-    console.log(JSON.stringify(graph))
-    printGraph(graph)
-    process.exit(0)
-});
+async function dumpGraph(graph: UserGraph) {
+    const downloads = Object.values(graph).map(async user => {
+        return {
+            ...user,
+            profile: {
+                ...user.profile,
+                image: await user.profile.image
+                    .then(blobToDataUrl)
+                    .catch((reason) => {
+                        console.error({
+                            message: `Failed to download profile picture. (User: ${user.profile.username})`,
+                            reason
+                        })
+
+                        return null;
+                    })
+            }
+        }
+    })
+
+    const dump: UserGraph = (await Promise.all(downloads)).reduce((graph, user) => {
+        graph[user.id] = user
+        return graph
+    }, {})
+
+    return JSON.stringify(dump)
+}
+
 
 try {
     const existingSession = await prompt.confirm({message: "Use an existing session id?", default: false});
@@ -160,6 +193,12 @@ try {
         }
     }).getReader()
 
+    process.on('SIGINT', async () => {
+        console.log(await dumpGraph(graph))
+        printGraph(graph)
+        process.exit(0)
+    });
+
     while (true) {
         const {done, value} = await reader.read()
         if (done) break;
@@ -198,5 +237,5 @@ try {
     }
 }
 
-console.log(JSON.stringify(graph))
+console.log(await dumpGraph(graph))
 printGraph(graph)
