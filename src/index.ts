@@ -2,7 +2,7 @@ import * as prompt from '@inquirer/prompts';
 import {
     encryptPassword,
     fetchVerification,
-    login,
+    login, SessionData,
     TwoFactorInformation,
     TwoFactorRequired,
     VerificationData,
@@ -11,7 +11,7 @@ import {
 import {ExitPromptError} from "@inquirer/prompts";
 
 
-async function authenticate(): Promise<string> {
+async function authenticate(): Promise<SessionData> {
     const verification = await fetchVerification()
 
     while (true) {
@@ -36,7 +36,7 @@ async function authenticate(): Promise<string> {
 async function twoFactor({verification, info}: {
     verification: VerificationData,
     info: TwoFactorInformation
-}): Promise<string> {
+}): Promise<SessionData> {
     while (true) {
         const code = await prompt.input({message: "Two factor authentication code: "})
 
@@ -48,8 +48,34 @@ async function twoFactor({verification, info}: {
     }
 }
 
+async function readExistingSessionId(): Promise<SessionData> {
+    while (true) {
+        const sessionId = await prompt.password({message: "Session id: "})
+        const userId = parseInt(sessionId.split("%")[0], 10)
+
+        if(isNaN(userId)) {
+            console.log("Session id seems to be invalid. Try again.")
+            continue
+        }
+
+        return {
+            id: sessionId,
+            user: {
+                id: parseInt(sessionId.split("%")[0], 10)
+            }
+        }
+    }
+}
+
+
 try {
-    console.dir({sessionId: await authenticate()})
+    const existingSession = await prompt.confirm({message: "Use an existing session id?", default: false});
+
+    const session: SessionData = await (!existingSession ? authenticate() : readExistingSessionId())
+
+    if (await prompt.confirm({message: "Show session data?", default: false})) {
+        console.dir({session})
+    }
 } catch (e) {
     if (!(e instanceof ExitPromptError)) {
         console.error(e)

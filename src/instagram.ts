@@ -13,10 +13,21 @@ export class TwoFactorRequired extends Error {
     }
 }
 
+export interface SessionData extends Record<string, any> {
+    user: {
+        id: number,
+        username?: string
+    },
+    id: string
+}
+
 export interface TwoFactorInformation {
     identifier: string,
-    user: string,
-    device: string
+    user: {
+        username: string,
+        id: number
+    },
+    device: string,
 }
 
 export interface InstagramEncryptionKey {
@@ -127,7 +138,7 @@ export async function login({user, password, verification}: {
     user: string,
     password: EncryptedPassword,
     verification: VerificationData
-}): Promise<string> {
+}): Promise<SessionData> {
     const data = new FormData()
     data.set("username", user)
     data.set(
@@ -150,6 +161,7 @@ export async function login({user, password, verification}: {
                 message?: string,
                 two_factor_required?: boolean,
                 two_factor_info?: {
+                    pk: number,
                     username: string,
                     two_factor_identifier: string,
                     device_id: string
@@ -158,7 +170,10 @@ export async function login({user, password, verification}: {
 
             if (data.two_factor_required) {
                 throw new TwoFactorRequired({
-                    user: data.two_factor_info.username,
+                    user: {
+                        id: data.two_factor_info.pk,
+                        username: data.two_factor_info.username
+                    },
                     identifier: data.two_factor_info.two_factor_identifier,
                     device: data.two_factor_info.device_id
                 })
@@ -170,20 +185,30 @@ export async function login({user, password, verification}: {
         }
     }
 
-    if ((await response.json())["authenticated"] !== true) {
-        throw new Error("Authentication failed.")
+    const result = (await response.json()) as {
+        authenticated: boolean,
+        userId: number
     }
 
-    return getSessionId(response)
+    if (result.authenticated !== true) {
+        throw new Error("Authentication failed. Check your credentials.")
+    }
+
+    return {
+        id: getSessionId(response),
+        user: {
+            id: result.userId
+        }
+    }
 }
 
 export async function verify2FA({verification, info, code}: {
     info: TwoFactorInformation,
     verification: VerificationData,
     code: string
-}): Promise<string> {
+}): Promise<SessionData> {
     const body = new FormData()
-    body.set("username", info.user)
+    body.set("username", info.user.username)
     body.set("identifier", info.identifier)
     body.set("verificationCode", code)
 
@@ -202,5 +227,11 @@ export async function verify2FA({verification, info, code}: {
         throw Error(message ?? "Two factor authentication failed.")
     }
 
-    return getSessionId(response)
+    return {
+        id: getSessionId(response),
+        user: {
+            id: info.user.id,
+            username: info.user.username
+        },
+    }
 }
