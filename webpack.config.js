@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const config = {
-    entry: './src/visualization/graph.js',
+    entry: './src/visualization/index.ts',
     devtool: 'source-map',
     output: {
         path: path.resolve(__dirname, 'dist'),

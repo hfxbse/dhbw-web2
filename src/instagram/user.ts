@@ -5,6 +5,19 @@ export interface User {
     profile: {
         name: string,
         username: string,
+        image: string
+    },
+    followerIds?: number[],
+    private?: boolean,
+    public: boolean,
+    personal?: boolean
+}
+
+export interface UnsettledUser {
+    id: number,
+    profile: {
+        name: string,
+        username: string,
         image: Promise<Blob> | null,
     }
     followerIds?: number[],
@@ -13,11 +26,13 @@ export interface User {
     personal?: boolean
 }
 
-export interface UserGraph extends Record<number, User> {
+export type UserGraph = Record<number, User>
+
+export interface UnsettledUserGraph extends Record<number, UnsettledUser> {
     canceled?: boolean
 }
 
-export async function fetchUser(username: string, session?: SessionData): Promise<User> {
+export async function fetchUser(username: string, session?: SessionData): Promise<UnsettledUser> {
     const response = await fetch(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
         headers: {
             "Sec-Fetch-Site": "same-origin",

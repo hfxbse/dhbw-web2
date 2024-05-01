@@ -1,7 +1,6 @@
 import './styles.css'
 
-import {d3graph} from "./createJson.js";
-import {placeholderImage} from "./placeholder.js";
+import {placeholderImage} from "./placeholder.ts";
 import * as d3 from "d3";
 
 let colorGroupList = {};

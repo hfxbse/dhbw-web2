@@ -1,6 +1,6 @@
 import SessionData, {sessionToCookie} from "./session-data";
 import {RandomDelayLimit, Limits} from "./limits";
-import {downloadProfilePicture, User, UserGraph} from "./user";
+import {downloadProfilePicture, UnsettledUser, UnsettledUserGraph} from "./user";
 import {ReadableStream} from "node:stream/web";
 import {hasJsonBody} from "./request";
 
@@ -10,7 +10,7 @@ export enum FollowerFetcherEventTypes {
 
 export interface FollowerFetcherAddition {
     followers: number[],
-    users: User[],
+    users: UnsettledUser[],
     progress: {
         done: number
     }
@@ -18,8 +18,8 @@ export interface FollowerFetcherAddition {
 
 export interface FollowerFetcherEvent {
     type: FollowerFetcherEventTypes,
-    user: User,
-    graph: UserGraph
+    user: UnsettledUser,
+    graph: UnsettledUserGraph
     added?: FollowerFetcherAddition,
     delay?: number,
     amount?: number
@@ -38,8 +38,8 @@ function randomDelay(limit: RandomDelayLimit) {
 
 
 async function rateLimiter({graph, user, phase, batchCount, limits, controller}: {
-    graph: UserGraph,
-    user: User,
+    graph: UnsettledUserGraph,
+    user: UnsettledUser,
     phase: number,
     batchCount: number
     limits: Limits,
@@ -83,7 +83,7 @@ async function rateLimiter({graph, user, phase, batchCount, limits, controller}:
     return phase
 }
 
-export function printGraph(graph: UserGraph) {
+export function printGraph(graph: UnsettledUserGraph) {
     console.table(Object.values(graph).map(user => {
         return {
             id: user.id,
@@ -96,8 +96,8 @@ export function printGraph(graph: UserGraph) {
 }
 
 function addFollowerToGraph({graph, followers, done, target, controller}: {
-    graph: UserGraph,
-    followers: User[],
+    graph: UnsettledUserGraph,
+    followers: UnsettledUser[],
     done: Set<number>,
     target: number,
     controller: ReadableStreamDefaultController<FollowerFetcherEvent>
@@ -130,8 +130,8 @@ function addFollowerToGraph({graph, followers, done, target, controller}: {
 }
 
 function addFollowingToGraph({graph, following, done, task, controller}: {
-    graph: UserGraph,
-    following: User[],
+    graph: UnsettledUserGraph,
+    following: UnsettledUser[],
     done: Set<number>,
     task: number,
     controller: ReadableStreamDefaultController<FollowerFetcherEvent>
@@ -160,12 +160,12 @@ function addFollowingToGraph({graph, following, done, task, controller}: {
 }
 
 export function getFollowerGraph({root, session, limits, includeFollowing}: {
-    root: User,
+    root: UnsettledUser,
     session: SessionData,
     includeFollowing: boolean,
     limits: Limits
 }): ReadableStream<FollowerFetcherEvent> {
-    const graph: UserGraph = {[root.id]: root}
+    const graph: UnsettledUserGraph = {[root.id]: root}
 
     let controller: ReadableStreamDefaultController<FollowerFetcherEvent>
 
@@ -212,7 +212,7 @@ function excess(current: number, limit: number, addition: any[]) {
 
 async function createFollowerGraph({controller, limits, graph, session, includeFollowing}: {
     controller: ReadableStreamDefaultController<FollowerFetcherEvent>,
-    graph: UserGraph,
+    graph: UnsettledUserGraph,
     limits: Limits,
     session: SessionData,
     includeFollowing: boolean,
@@ -339,8 +339,8 @@ enum FollowerDirection {
 }
 
 async function fetchFollowers({session, targetUser, nextPage, direction, limits}: {
-    session: SessionData, targetUser: User, nextPage?: string, direction: FollowerDirection, limits: Limits
-}): Promise<{ page: User[], nextPage: string }> {
+    session: SessionData, targetUser: UnsettledUser, nextPage?: string, direction: FollowerDirection, limits: Limits
+}): Promise<{ page: UnsettledUser[], nextPage: string }> {
     const query = nextPage ? `?max_id=${nextPage}` : '';
     const directionPath = direction === FollowerDirection.FOLLOWING ? 'following' : 'followers'
 
