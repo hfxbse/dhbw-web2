@@ -187,12 +187,34 @@ export default class UserGraphVisualization extends HTMLElement {
         const isColored = linksToUpdate.attr("stroke") === clickedColor.toString();
 
         if (isColored) {
-            linksToUpdate.transition().duration(500)
-                .attr("stroke", "#999");
+            linksToUpdate.transition().duration(500).attr("stroke", "#999");
             delete this.colorGroupList[d.id];
         } else {
-            linksToUpdate.transition().duration(500)
-                .attr("stroke", clickedColor);
+            linksToUpdate.transition().duration(500).attr("stroke", clickedColor);
         }
+    }
+
+    highlightUserLinks(user: User) {
+        // Select the SVG elements representing the links associated with the clicked node
+        const linksToUpdate = d3.selectAll(".link line")
+            .filter(link => link.source.id === user.id || link.target.id === user.id);
+
+        if (!this.colorGroupList[user.id]) {
+            this.colorGroupList[user.id] = Math.random();
+        }
+
+        const clickedColor = this.color(this.colorGroupList[user.id]);
+        linksToUpdate.transition().duration(500).attr("stroke", clickedColor);
+    }
+
+    removeHighlights() {
+        // Select all links
+        const links = this.querySelectorAll(".link line");
+
+        // Reset the color of each link to the default color set by the css style sheet
+        links.forEach(link => link.removeAttribute("stroke"));
+
+        // Optionally, clear the colorGroupList object
+       this.colorGroupList = {};
     }
 }
