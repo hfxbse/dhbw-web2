@@ -1,5 +1,6 @@
 import {d3graph} from "./createJson.js";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import {placeholderImage} from "./placeholder.js";
 
 let colorGroupList = {};
 console.dir(d3graph);
@@ -43,11 +44,7 @@ function chart() {
         .join("g")
         .attr("class", "node-group")
         .append("image")
-        .attr("xlink:href", d => {
-            const placeholder = "https://woodfibreinsulation.co.uk/wp-content/uploads/2017/04/blank-profile-picture-973460-1-1-1024x1024.png;"
-
-            return d.profile.imageURL ?? placeholder;
-        })
+        .attr("xlink:href", d => d.profile.image ?? placeholderImage)
         .attr("width", 20)
         .attr("height", 20)
         .attr("x", -10)
