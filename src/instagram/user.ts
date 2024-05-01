@@ -13,7 +13,9 @@ export interface User {
     personal?: boolean
 }
 
-export type UserGraph = Record<number, User>;
+export interface UserGraph extends Record<number, User> {
+    canceled?: boolean
+}
 
 export async function fetchUser(username: string, session?: SessionData): Promise<User> {
     const response = await fetch(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {

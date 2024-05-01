@@ -167,8 +167,12 @@ export function getFollowerGraph({root, session, limits, includeFollowing}: {
 }): ReadableStream<FollowerFetcherEvent> {
     const graph: UserGraph = {[root.id]: root}
 
+    let controller: ReadableStreamDefaultController<FollowerFetcherEvent>
+
     return new ReadableStream<FollowerFetcherEvent>({
-        async start(controller: ReadableStreamDefaultController<FollowerFetcherEvent>) {
+        start: async (c: ReadableStreamDefaultController<FollowerFetcherEvent>) => {
+            controller = c
+
             if (root.private) {
                 controller.enqueue({
                     type: FollowerFetcherEventTypes.UPDATE,
@@ -188,8 +192,11 @@ export function getFollowerGraph({root, session, limits, includeFollowing}: {
             }
 
             await createFollowerGraph({limits, graph, session, controller, includeFollowing});
-            return controller.close();
+            controller.close();
         },
+        cancel: async () => {
+            graph.canceled = true
+        }
     })
 }
 
@@ -207,14 +214,14 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
     const done: Set<number> = new Set()
     let phase = 0
 
-    for (let i = 0; i <= limits.depth.generations; i++) {
+    for (let i = 0; i <= limits.depth.generations && !graph.canceled; ++i) {
         const open = Object.values(graph)
             .filter(user => !done.has(user.id))
             .map(user => user.id)
 
-        if (open.length < 1) break;  // no open task, skip remaining generations
+        if (open.length < 1 || graph.canceled) break;  // no open task, skip remaining generations
 
-        while (open.length > 0) {
+        while (open.length > 0 && !graph.canceled) {
             const batchSize = Math.floor(limits.rate.batchSize / 100)
             const batch = open.splice(0, batchSize < 1 ? 1 : batchSize).map(async task => {
                 graph[task].followerIds = graph[task].followerIds ?? []
@@ -222,7 +229,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                 const followers = async () => {
                     let nextPage = undefined
 
-                    while (nextPage !== null) {
+                    while (nextPage !== null && !graph.canceled) {
                         const followers = await fetchFollowers({
                             session,
                             targetUser: graph[task],
@@ -264,7 +271,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                     let nextPage = undefined
                     let followingCount = 0
 
-                    while (nextPage !== null) {
+                    while (nextPage !== null && !graph.canceled) {
                         const following = await fetchFollowers({
                             session,
                             targetUser: graph[task],
@@ -280,7 +287,6 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                             controller,
                             task: graph[task].id
                         })
-
 
                         phase = await rateLimiter({
                             graph,
