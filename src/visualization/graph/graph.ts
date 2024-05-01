@@ -74,8 +74,8 @@ export default class UserGraphVisualization extends HTMLElement {
     color = d3.scaleSequential(this.interpolateAngry);
 
     matchWindowSize(simulation, svg) {
-        const width = screen.width
-        const height = screen.height
+        const width = window.innerWidth
+        const height = window.innerHeight
 
         svg.attr("viewBox", [0, 0, width, height])
         simulation.force("center", d3.forceCenter(width / 2, height / 2))
