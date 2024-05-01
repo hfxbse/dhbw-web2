@@ -2,6 +2,7 @@ import SessionData, {sessionToCookie} from "./session-data";
 import {RandomDelayLimit, Limits} from "./limits";
 import {User, UserGraph} from "./user";
 import {ReadableStream} from "node:stream/web";
+import {hasJsonBody} from "./request";
 
 export enum FollowerFetcherEventTypes {
     UPDATE, RATE_LIMIT_BATCH, RATE_LIMIT_DAILY, DEPTH_LIMIT_FOLLOWER, DEPTH_LIMIT_FOLLOWING
@@ -336,6 +337,24 @@ async function fetchFollowers({session, targetUser, nextPage, direction}: {
             "Cookie": sessionToCookie(session),
         }
     })
+
+    if (!response.ok) {
+        if (hasJsonBody(response)) {
+            const data = (await response.json()) as {
+                message?: string,
+                require_login?: boolean
+            }
+
+            if (data.require_login) throw Error("Authentication failure while querying followers. Check your session id again.")
+
+            throw Error(
+                data.message ??
+                `Received status code ${response.status} (${response.statusText}) while querying followers. ` +
+                `The response contained the following: ${data}`)
+        } else {
+            throw Error(await response.text() ?? 'Failed to load followers.')
+        }
+    }
 
     const page = (await response.json()) as {
         users: {

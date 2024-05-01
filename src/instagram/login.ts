@@ -1,6 +1,7 @@
 import hexToArrayBuffer from "hex-to-array-buffer";
 import sealBox from "tweetnacl-sealedbox-js";
 import SessionData from "./session-data";
+import {hasJsonBody} from "./request";
 
 const crypto = globalThis.crypto
 const encoder = new TextEncoder()
@@ -123,9 +124,6 @@ function getSessionId(response: Response): string {
         .substring(identifier.length)
 }
 
-function hasJsonBody(response: Response): boolean {
-    return response.headers.get("Content-Type").startsWith("application/json;")
-}
 
 export async function login({user, password, verification}: {
     user: string,
