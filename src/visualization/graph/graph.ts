@@ -18,8 +18,6 @@ type HTMLAttribute = undefined | null | number | string | boolean
 export default class UserGraphVisualization extends HTMLElement {
     static graphAttribute = 'graph'
 
-    simulation: any = undefined
-
     graph: UserGraph = {} as UserGraph
 
     // noinspection JSUnusedGlobalSymbols
@@ -44,9 +42,7 @@ export default class UserGraphVisualization extends HTMLElement {
         this.setSimulation(this.createSimulation(this.toD3UserGraph(this.graph)))
     }
 
-    setSimulation({simulation, svg}: { simulation: any, svg: HTMLElement }) {
-        this.simulation = simulation
-
+    setSimulation(svg: HTMLElement) {
         while (this.childElementCount > 0) {
             this.removeChild(this.lastChild)
         }
@@ -77,22 +73,23 @@ export default class UserGraphVisualization extends HTMLElement {
     colorGroupList = {};
     color = d3.scaleSequential(this.interpolateAngry);
 
-    createSimulation(graph: D3UserGraph): { simulation: unknown, svg: HTMLElement } {
+    matchWindowSize(simulation, svg) {
         const width = screen.width
         const height = screen.height
 
-        console.dir(graph)
+        svg.attr("viewBox", [0, 0, width, height])
+        simulation.force("center", d3.forceCenter(width / 2, height / 2))
+    }
 
+    createSimulation(graph: D3UserGraph): HTMLElement {
         const simulation = d3.forceSimulation(graph.nodes)
             .force("link", d3.forceLink(graph.links).id(d => d.id).distance(50))
             .force("charge", d3.forceManyBody().strength(-300))
-            .force("center", d3.forceCenter(width / 2, height / 2))
 
         const svg = d3.create("svg")
-            .attr("width", width)
-            .attr("height", height)
-            .attr("viewBox", [0, 0, width, height])
-            .attr("class", "svg-container");
+
+        this.matchWindowSize(simulation, svg)
+        window.addEventListener("resize", () => this.matchWindowSize(simulation, svg))
 
         const canvas = svg.append("g");
 
@@ -141,7 +138,7 @@ export default class UserGraphVisualization extends HTMLElement {
 
         svg.call(zoom);
 
-        return {simulation: simulation, svg: svg.node()}
+        return svg.node()
     }
 
     ticked(link, node) {
@@ -215,6 +212,6 @@ export default class UserGraphVisualization extends HTMLElement {
         links.forEach(link => link.removeAttribute("stroke"));
 
         // Optionally, clear the colorGroupList object
-       this.colorGroupList = {};
+        this.colorGroupList = {};
     }
 }
