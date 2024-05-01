@@ -113,13 +113,14 @@ export default class UserGraphVisualization extends HTMLElement {
             .join("g")
             .attr("class", "node-group")
             .append("image")
-            .attr("xlink:href", d => d.profile.image ?? placeholderImage)
+            .attr("xlink:href", (user: User) => user.profile.image ?? placeholderImage)
             .attr("width", 20)
             .attr("height", 20)
             .attr("x", -10)
             .attr("y", -10)
             .attr("clip-path", "url(#imageClip)")
-            .on("click", (_, d) => this.clicked(link, d));
+            .on("click", (_, d) => this.onClick(link, d))
+            .on("dblclick", (_, user: User) => window.open(`https://instagram.com/${user.profile.username}`, '_blank'))
 
         node.append("title")
             .text(d => d.profile.username);
@@ -169,10 +170,14 @@ export default class UserGraphVisualization extends HTMLElement {
     }
 
     onZoom(canvas, event) {
+        const source = event.sourceEvent
+
+        if (source instanceof MouseEvent && source.type === 'dblclick') return
+
         canvas.attr("transform", event.transform);
     }
 
-    clicked(link, d) {
+    onClick(link, d) {
         const clickedNodeId = d.id;
         const linksToUpdate = link.filter(linkData => linkData.source.id === clickedNodeId || linkData.target.id === clickedNodeId);
 
