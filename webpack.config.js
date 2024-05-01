@@ -11,6 +11,7 @@ const __dirname = dirname(__filename)
 
 const config = {
     entry: './src/visualization/graph.js',
+    devtool: 'source-map',
     output: {
         path: path.resolve(__dirname, 'dist'),
     },
@@ -30,7 +31,10 @@ const config = {
             {
                 test: /\.(ts|tsx)$/i,
                 loader: 'ts-loader',
-                exclude: ['/node_modules/'],
+                exclude: ['/node_modules/', '/test/'],
+                options: {
+                    configFile: 'webpack.tsconfig.json'
+                }
             },
             {
                 test: /\.css$/,
