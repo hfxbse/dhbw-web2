@@ -3,6 +3,8 @@ import HtmlWebpackPlugin from 'html-webpack-plugin';
 import HtmlInlineScriptPlugin from 'html-inline-script-webpack-plugin'
 import HTMLInlineCSSWebpackPlugin from 'html-inline-css-webpack-plugin'
 import MiniCssExtractPlugin from 'mini-css-extract-plugin'
+import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
+import TerserPlugin from "terser-webpack-plugin";
 import {fileURLToPath} from 'url'
 import {dirname} from 'path'
 
@@ -19,6 +21,7 @@ const config = {
         new MiniCssExtractPlugin({
             filename: "[name].css",
             chunkFilename: "[id].css",
+
         }),
         new HtmlWebpackPlugin({
             template: '/src/visualization/index.html',
@@ -57,8 +60,16 @@ const config = {
     resolve: {
         extensions: ['.tsx', '.ts', '.jsx', '.js', '...'],
     },
+    optimization: {
+        minimize: true,
+        minimizer: [
+            new TerserPlugin(),
+            new CssMinimizerPlugin(),
+        ],
+    },
 };
 
+// noinspection JSUnusedGlobalSymbols
 export default () => {
     if (process.env.NODE_ENV === 'production') {
         config.mode = 'production';
