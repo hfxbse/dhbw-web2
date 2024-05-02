@@ -1,35 +1,30 @@
 import UserGraphVisualization from "./graph/graph";
+import GraphToolbar from "./toolbar/toolbar";
 import example from './example'
 import './layout.css'
 import {User} from "../instagram/user";
 
 customElements.define('user-graph', UserGraphVisualization)
+customElements.define('graph-toolbar', GraphToolbar)
 
 
 window.addEventListener("DOMContentLoaded", () => {
     const visualization = document.querySelector("user-graph") as UserGraphVisualization;
     visualization.setAttribute(UserGraphVisualization.graphAttribute, JSON.stringify(example))
 
-    let searchBox: HTMLInputElement = document.getElementById("searchBox") as HTMLInputElement;
-    searchBox.addEventListener("keypress", function (event) {
-        if (event.key === "Enter") {
-            let userInput = searchBox.value.trim(); // Trim to remove any leading/trailing spaces
+    const toolbar = document.querySelector("graph-toolbar") as GraphToolbar;
 
-            // Find the node in the graph data that matches the user input
-            let matchingUser = Object.values(example).find((user: User) => user.profile.username === userInput);
+    toolbar.addEventListener("reset-graph", () => visualization.removeHighlights());
+    toolbar.addEventListener("search-user", function (event: CustomEvent) {
+        let matchingUser = Object.values(example).find((user: User) => user.profile.username === event.detail);
 
-            if (matchingUser) {
-                // Highlight the associated links
-                visualization.highlightUserLinks(matchingUser); // No need to pass 'link' here
-                console.log("Node found!");
-            } else {
-                // Node not found, you can display an error message or handle it accordingly
-                console.log("Node not found!");
-            }
-
-            searchBox.value = ""; // Clear the searchBox value after sending input
+        if (matchingUser) {
+            // Highlight the associated links
+            visualization.highlightUserLinks(matchingUser); // No need to pass 'link' here
+            console.log("Node found!");
+        } else {
+            // Node not found, you can display an error message or handle it accordingly
+            console.log("Node not found!");
         }
     });
-
-    document.getElementById("clearColors").addEventListener("click", () => visualization.removeHighlights());
 })

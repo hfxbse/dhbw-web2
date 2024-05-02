@@ -1,0 +1,50 @@
+.graph-toolbar {
+    display: flex;
+    gap: var(--element-padding-horizontal);
+    align-items: center;
+
+    > button {
+        flex: 0;
+
+        display: inherit;
+        align-items: inherit;
+        gap: var(--element-padding-between);
+
+        padding: min(var(--element-padding-vertical), var(--element-padding-horizontal));
+
+        background: var(--element-background);
+        outline: none;
+
+        border: var(--element-boarder);
+        border-radius: var(--element-radius);
+    }
+
+    label {
+        flex: 1;
+
+        display: inherit;
+        align-items: inherit;
+        gap: var(--element-padding-between);
+
+        padding: var(--element-padding);
+
+        background: var(--element-background);
+        border: var(--element-boarder);
+        border-radius: var(--element-radius);
+
+        input {
+            width: 100%;
+            outline: none;
+            border: none;
+        }
+
+        button {
+            height: 24px;
+            padding: 0;
+            background: transparent;
+            border: none;
+        }
+    }
+}
+
+

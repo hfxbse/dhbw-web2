@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^4.3.0",
+    "@material-design-icons/svg": "^0.14.13",
     "d3": "^7.9.0",
     "hex-to-array-buffer": "^2.0.0",
     "tweetnacl-sealedbox-js": "^1.2.0"
