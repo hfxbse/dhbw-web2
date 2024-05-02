@@ -13,8 +13,9 @@ window.addEventListener("DOMContentLoaded", () => {
     visualization.setAttribute(UserGraphVisualization.graphAttribute, JSON.stringify(example))
 
     const toolbar = document.querySelector("graph-toolbar") as GraphToolbar;
+    toolbar.addEventListener("remove-highlighting", () => visualization.removeHighlights());
+    toolbar.addEventListener("reset-positioning", () => visualization.resetPositioning())
 
-    toolbar.addEventListener("reset-graph", () => visualization.removeHighlights());
     toolbar.addEventListener("search-user", function (event: CustomEvent) {
         let matchingUser = Object.values(example).find((user: User) => user.profile.username === event.detail);
 

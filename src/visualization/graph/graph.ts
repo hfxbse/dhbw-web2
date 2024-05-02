@@ -19,6 +19,8 @@ export default class UserGraphVisualization extends HTMLElement {
     static graphAttribute = 'graph'
 
     graph: UserGraph = {} as UserGraph
+    zoom: any = undefined
+    visualization: any = undefined
 
     // noinspection JSUnusedGlobalSymbols
     static get observedAttributes() {
@@ -86,12 +88,12 @@ export default class UserGraphVisualization extends HTMLElement {
             .force("link", d3.forceLink(graph.links).id(d => d.id).distance(50))
             .force("charge", d3.forceManyBody().strength(-300))
 
-        const svg = d3.create("svg")
+        this.visualization = d3.create("svg")
 
-        this.matchWindowSize(simulation, svg)
-        window.addEventListener("resize", () => this.matchWindowSize(simulation, svg))
+        this.matchWindowSize(simulation, this.visualization)
+        window.addEventListener("resize", () => this.matchWindowSize(simulation, this.visualization))
 
-        const canvas = svg.append("g");
+        const canvas = this.visualization.append("g");
 
         const link = canvas.append("g")
             .attr("class", 'link')
@@ -133,13 +135,13 @@ export default class UserGraphVisualization extends HTMLElement {
 
         simulation.on("tick", () => this.ticked(link, node));
 
-        const zoom = d3.zoom()
+        this.zoom = d3.zoom()
             .scaleExtent([0.1, 10])
             .on("zoom", (event) => this.onZoom(canvas, event));
 
-        svg.call(zoom);
+        this.visualization.call(this.zoom);
 
-        return svg.node()
+        return this.visualization.node()
     }
 
     ticked(link, node) {
@@ -217,5 +219,9 @@ export default class UserGraphVisualization extends HTMLElement {
 
         // Optionally, clear the colorGroupList object
         this.colorGroupList = {};
+    }
+
+    resetPositioning() {
+        this.visualization.call(this.zoom.transform, d3.zoomIdentity)
     }
 }
