@@ -17,15 +17,11 @@ window.addEventListener("DOMContentLoaded", () => {
     toolbar.addEventListener("reset-positioning", () => visualization.resetPositioning())
 
     toolbar.addEventListener("search-user", function (event: CustomEvent) {
-        let matchingUser = Object.values(example).find((user: User) => user.profile.username === event.detail);
+        const matchingUser = Object.values(example).find((user: User) => user.profile.username === event.detail);
 
-        if (matchingUser) {
-            // Highlight the associated links
-            visualization.highlightUserLinks(matchingUser); // No need to pass 'link' here
-            console.log("Node found!");
-        } else {
-            // Node not found, you can display an error message or handle it accordingly
-            console.log("Node not found!");
-        }
+        if (!matchingUser) return toolbar.setSearchError(`No user found with the exact username: ${event.detail}`)
+
+        visualization.highlightUserLinks(matchingUser);
+        toolbar.clearSearch();
     });
 })

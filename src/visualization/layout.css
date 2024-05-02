@@ -8,7 +8,9 @@
     --element-padding-vertical: 8px;
     --element-padding: var(--element-padding-vertical) var(--element-padding-horizontal);
 
-    --element-padding-between: var(--element-padding-vertical)
+    --element-padding-between: var(--element-padding-vertical);
+
+    --element-error-color: hsl(0, 100%, 38%);
 }
 
 * {

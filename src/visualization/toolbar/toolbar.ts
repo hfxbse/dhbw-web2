@@ -32,14 +32,14 @@ export default class GraphToolbar extends HTMLElement {
         })
 
         const search = this.querySelector('input');
-        const dispatchSearch = () => this.dispatchEvent(new CustomEvent('search-user', {detail: search.value}))
+        search.addEventListener("input", () => this.clearSearchError())
 
+        const dispatchSearch = () => this.dispatchEvent(new CustomEvent('search-user', {detail: search.value}))
+        this.querySelector('.submit-search').addEventListener('click', dispatchSearch)
         search.addEventListener('keypress', (event) => {
             if (event.key !== 'Enter') return
             dispatchSearch()
         })
-
-        this.querySelector('.submit-search').addEventListener('click', dispatchSearch)
     }
 
     decodeIcon(data: string): string {
@@ -51,5 +51,17 @@ export default class GraphToolbar extends HTMLElement {
             // noinspection HtmlRequiredAltAttribute
             return `<img src="${data}">`
         }
+    }
+
+    setSearchError(message?: string) {
+        this.querySelector('label').setAttribute("error", message ?? 'error')
+    }
+
+    clearSearchError() {
+        this.querySelector('label').removeAttribute("error")
+    }
+
+    clearSearch() {
+        this.querySelector('input').value = ''
     }
 }

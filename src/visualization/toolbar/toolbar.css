@@ -36,6 +36,8 @@
             width: 100%;
             outline: none;
             border: none;
+
+            color: inherit;
         }
 
         button {
@@ -44,6 +46,12 @@
             background: transparent;
             border: none;
         }
+    }
+
+    label[error] {
+        border-color: var(--element-error-color);
+        color: var(--element-error-color);
+        fill: var(--element-error-color)
     }
 }
 
