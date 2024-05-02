@@ -72,18 +72,24 @@ export async function fetchUser(username: string, session?: SessionData): Promis
     return mapped;
 }
 
-export async function downloadProfilePicture(source: string | undefined): Promise<Blob> | null {
+export async function downloadProfilePicture(source: string | undefined): Promise<Blob | null> {
     if (!source) return null
 
-    const response = await fetch(source, {
-        headers: {
-            "Sec-Fetch-Site": "same-origin",
-        }
-    })
+    try {
+        const response = await fetch(source, {
+            headers: {
+                "Sec-Fetch-Site": "same-origin",
+            }
+        })
 
-    if (!response.ok) {
-        throw Error(await response.text())
+        if (!response.ok) {
+            await response.text().then(console.error, () => {})
+            return null
+        }
+
+        return await response.blob()
+    } catch (e) {
+        return null
     }
 
-    return await response.blob()
 }

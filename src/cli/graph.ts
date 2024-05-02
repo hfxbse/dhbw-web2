@@ -14,14 +14,13 @@ export async function settleGraph(graph: UnsettledUserGraph) {
             profile: {
                 ...user.profile,
                 image: await user.profile.image
-                    .then(blobToDataUrl)
-                    .catch((reason: any) => {
-                        console.error({
-                            message: `Failed to download profile picture. (User: ${user.profile.username})`,
-                            reason
-                        })
+                    .then((image: Blob | null) => {
+                        if (!image) {
+                            console.error(`Failed to download profile picture. (User: ${user.profile.username})`)
+                            return null;
+                        }
 
-                        return null;
+                        return blobToDataUrl(image)
                     })
             }
         }
