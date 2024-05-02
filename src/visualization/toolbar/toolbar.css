@@ -17,9 +17,16 @@
 
         border: var(--element-boarder);
         border-radius: var(--element-radius);
+
+        svg {
+            fill: var(--text-color);
+        }
     }
 
     label {
+        color: var(--text-color);
+        fill: var(--text-color);
+
         flex: 1;
 
         display: inherit;
@@ -33,11 +40,16 @@
         border-radius: var(--element-radius);
 
         input {
+            background: none;
             width: 100%;
             outline: none;
             border: none;
 
             color: inherit;
+
+            ::placeholder {
+                color: var(--placeholder-text-color);
+            }
         }
 
         button {
@@ -51,7 +63,7 @@
     label[error] {
         border-color: var(--element-error-color);
         color: var(--element-error-color);
-        fill: var(--element-error-color)
+        fill: var(--element-error-color) !important;
     }
 }
 
