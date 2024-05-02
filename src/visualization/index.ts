@@ -1,10 +1,12 @@
 import UserGraphVisualization from "./graph/graph";
 import GraphToolbar from "./toolbar/toolbar";
-import './layout.css'
+import MaterialIcon from "./material-icon/material-icon";
 import {User, UserGraph} from "../instagram/user";
+import './layout.css'
 
 customElements.define('user-graph', UserGraphVisualization)
 customElements.define('graph-toolbar', GraphToolbar)
+customElements.define('material-icon', MaterialIcon)
 
 
 window.addEventListener("DOMContentLoaded", () => {

@@ -13,8 +13,6 @@ export interface D3UserGraph {
     links: D3UserGraphLink[]
 }
 
-type HTMLAttribute = undefined | null | number | string | boolean
-
 export default class UserGraphVisualization extends HTMLElement {
     static graphAttribute = 'graph'
 
@@ -28,7 +26,7 @@ export default class UserGraphVisualization extends HTMLElement {
     }
 
     // noinspection JSUnusedGlobalSymbols
-    attributeChangedCallback(property: string, oldValue: HTMLAttribute, newValue: HTMLAttribute) {
+    attributeChangedCallback(property: string, oldValue: string, newValue: string) {
         if (oldValue === newValue) return;
 
         if (property === UserGraphVisualization.graphAttribute) {
