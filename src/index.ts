@@ -100,7 +100,7 @@ async function streamGraph(stream: ReadableStream<FollowerFetcherEvent>) {
 
 
 try {
-    const existingSession = await prompt.confirm({message: "Use an existing session id?", default: false});
+    const existingSession = await prompt.confirm({message: "Use an existing session id?", default: true});
 
     const session: SessionData = await (!existingSession ? authenticate() : readExistingSessionId())
 
@@ -131,12 +131,12 @@ try {
                 followers,
             },
             rate: {
-                batchSize: 100,
-                batchCount: 2,
+                batchSize: 4000,
+                batchCount: 10,
                 delay: {
                     pages: {
-                        upper: 5000,
-                        lower: 3000
+                        upper: 40000,
+                        lower: 20000
                     },
                     batches: {
                         upper: 35 * 60 * 1000,
