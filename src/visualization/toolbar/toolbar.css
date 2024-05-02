@@ -15,7 +15,7 @@
         background: var(--element-background);
         outline: none;
 
-        border: var(--element-boarder);
+        border: var(--element-border);
         border-radius: var(--element-radius);
 
         svg {
@@ -36,7 +36,7 @@
         padding: var(--element-padding);
 
         background: var(--element-background);
-        border: var(--element-boarder);
+        border: var(--element-border);
         border-radius: var(--element-radius);
 
         input {

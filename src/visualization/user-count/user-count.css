@@ -1,6 +1,6 @@
 .user-count {
     background: var(--element-background);
-    border: var(--element-boarder);
+    border: var(--element-border);
     border-radius: var(--element-radius);
     padding: var(--element-padding);
 
