@@ -13,9 +13,9 @@ import {readFileSync} from "fs";
 async function writeGraphToFile(filename: string, graph: UserGraph) {
     try {
         writeFileSync(filename, JSON.stringify(graph, null, 2))
-        console.log(`Wrote graph into ${filename}.json.`)
+        console.log(`Wrote graph into ${filename}.`)
     } catch (error) {
-        console.error({message: `Cannot write graph into ${filename}.json. Using stdout instead.`, error})
+        console.error({message: `Cannot write graph into ${filename}. Using stdout instead.`, error})
         await new Promise(resolve => setTimeout(() => {
             console.log(JSON.stringify(graph));
             resolve(undefined);
@@ -37,10 +37,10 @@ async function generateVisualization({template, output, graph, title}: {
 
     const result = readFileSync(template, {encoding: 'utf-8'})
         .replace('REPLACE-ME-WITH-TITLE', title)
-        .replace('REPLACE-ME-WITH-USER-GRAPH', graph.replace(/"/g, '\\\"'));
+        .replace('REPLACE-ME-WITH-USER-GRAPH', btoa(encodeURIComponent(graph)));
 
     writeFileSync(output, result)
-    console.log(`Created visualization for graph in ${output}.html.`)
+    console.log(`Created visualization for graph in ${output}.`)
 }
 
 

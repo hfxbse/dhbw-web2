@@ -8,7 +8,7 @@ customElements.define('graph-toolbar', GraphToolbar)
 
 
 window.addEventListener("DOMContentLoaded", () => {
-    const data = "REPLACE-ME-WITH-USER-GRAPH"
+    const data = decodeURIComponent(atob("REPLACE-ME-WITH-USER-GRAPH"))
     const graph: UserGraph = JSON.parse(data)
 
     const visualization = document.querySelector("user-graph") as UserGraphVisualization;
