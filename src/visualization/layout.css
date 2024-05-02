@@ -54,11 +54,17 @@ user-graph {
     overflow: hidden;
 }
 
-graph-toolbar {
-    width: 65ch;
-    max-width: calc(100% - 2 * var(--element-padding-horizontal));
+footer {
+    display: flex;
+    gap: calc(var(--element-padding-horizontal) * 2);
+    justify-content: space-between;
 
     position: fixed;
     bottom: var(--element-padding-horizontal);
+    left: var(--element-padding-horizontal);
     right: var(--element-padding-horizontal);
+}
+
+graph-toolbar {
+    flex: 0 1 65ch;
 }

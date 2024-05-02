@@ -1,0 +1,17 @@
+.user-count {
+    background: var(--element-background);
+    border: var(--element-boarder);
+    border-radius: var(--element-radius);
+    padding: var(--element-padding);
+
+    fill: var(--text-color);
+    gap: var(--element-padding-vertical);
+
+    display: flex;
+    align-items: center;
+
+    > span {
+        font-size: 1rem;
+        height: 1rem;
+    }
+}
