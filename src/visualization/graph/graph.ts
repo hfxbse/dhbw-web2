@@ -125,7 +125,11 @@ export default class UserGraphVisualization extends HTMLElement {
             .on("dblclick", (_, user: User) => window.open(`https://instagram.com/${user.profile.username}`, '_blank'))
 
         node.append("title")
-            .text(d => d.profile.username);
+            .text((user: User) => {
+                const count = user.followerIds?.length ?? 0;
+
+                return `${user.profile.name} @${user.profile.username} (${count} follower${count > 1 ? 's' : ''})`;
+            });
 
         node.call(d3.drag()
             .on("start", (event) => this.onDrag.start(simulation, event))
