@@ -186,13 +186,13 @@ export default class UserGraphVisualization extends HTMLElement {
         }
 
         const clickedColor = this.color(this.colorGroupList[d.id]);
-        const isColored = linksToUpdate.attr("stroke") === clickedColor.toString();
+        const isColored = linksToUpdate.attr("stroke") != null;
 
         if (isColored) {
-            linksToUpdate.transition().duration(500).attr("stroke", "#999");
+            linksToUpdate.attr("stroke", null);
             delete this.colorGroupList[d.id];
         } else {
-            linksToUpdate.transition().duration(500).attr("stroke", clickedColor);
+            linksToUpdate.attr("stroke", clickedColor);
         }
     }
 
@@ -205,8 +205,7 @@ export default class UserGraphVisualization extends HTMLElement {
             this.colorGroupList[user.id] = Math.random();
         }
 
-        const clickedColor = this.color(this.colorGroupList[user.id]);
-        linksToUpdate.transition().duration(500).attr("stroke", clickedColor);
+        linksToUpdate.attr("stroke", this.color(this.colorGroupList[user.id]));
     }
 
     removeHighlights() {
