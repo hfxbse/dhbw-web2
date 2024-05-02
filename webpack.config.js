@@ -67,6 +67,9 @@ const config = {
             new CssMinimizerPlugin(),
         ],
     },
+    performance: {
+        hints: false,
+    },
 };
 
 // noinspection JSUnusedGlobalSymbols
