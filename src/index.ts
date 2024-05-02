@@ -2,30 +2,47 @@ import * as prompt from '@inquirer/prompts';
 import {ExitPromptError} from '@inquirer/prompts';
 import {FollowerFetcherEvent, FollowerFetcherEventTypes, getFollowerGraph, printGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
-import {UnsettledUser, UnsettledUserGraph} from "./instagram/user";
-import {writeFileSync} from "node:fs";
+import {UnsettledUserGraph, UserGraph} from "./instagram/user";
+import {PathOrFileDescriptor, writeFileSync} from "node:fs";
 import {ReadableStream} from "node:stream/web";
 import {authenticate, readExistingSessionId, rootUser, wholeNumberPrompt} from "./cli/promps";
 import {settleGraph} from "./cli/graph";
+import {readFileSync} from "fs";
 
 
-const writeGraphToFile = async (root: UnsettledUser, graph: UnsettledUserGraph) => {
-    const filename = `${root.id}:${root.profile.username}:${new Date().toISOString()}.json`
-    const data = await settleGraph(graph)
-
+async function writeGraphToFile(filename: string, graph: UserGraph) {
     try {
-        writeFileSync(filename, JSON.stringify(data, null, 2))
-        console.log(`Wrote graph into ${filename}.`)
+        writeFileSync(filename, JSON.stringify(graph, null, 2))
+        console.log(`Wrote graph into ${filename}.json.`)
     } catch (error) {
-        console.error({message: `Cannot write graph into ${filename}. Using stdout instead.`, error})
+        console.error({message: `Cannot write graph into ${filename}.json. Using stdout instead.`, error})
         await new Promise(resolve => setTimeout(() => {
-            console.log(JSON.stringify(data));
+            console.log(JSON.stringify(graph));
             resolve(undefined);
         }, 500))
     }
 
     return filename
 }
+
+async function generateVisualization({template, output, graph, title}: {
+    template: PathOrFileDescriptor,
+    output: string,
+    title: string
+    graph: UserGraph | string
+}) {
+    if (typeof graph !== 'string') {
+        graph = JSON.stringify(graph);
+    }
+
+    const result = readFileSync(template, {encoding: 'utf-8'})
+        .replace('REPLACE-ME-WITH-TITLE', title)
+        .replace('REPLACE-ME-WITH-USER-GRAPH', graph.replace(/"/g, '\\\"'));
+
+    writeFileSync(output, result)
+    console.log(`Created visualization for graph in ${output}.html.`)
+}
+
 
 async function streamGraph(stream: ReadableStream<FollowerFetcherEvent>) {
     let graph: UnsettledUserGraph = {}
@@ -92,6 +109,7 @@ try {
     }
 
     const root = await rootUser({session})
+    const filename = `${root.id}:${root.profile.username}:${new Date().toISOString()}`
 
     const generations = await wholeNumberPrompt({
         message: "Generations to include: ", defaultValue: 1
@@ -133,13 +151,28 @@ try {
         }
     })
 
-    const {graph, cancellation} = await streamGraph(stream)
-    await Promise.all([writeGraphToFile(root, graph).then(() => {
-        console.info(
-            "The may process still needs to wait on the rate limiting timeouts to exit cleanly. " +
-            "Killing it should not cause any data lose."
-        )
-    }), cancellation])
+    const {graph: unsettledGraph, cancellation} = await streamGraph(stream)
+    const graph = await settleGraph(unsettledGraph)
+
+    const fileWriters = Promise.allSettled([
+        writeGraphToFile(`${filename}.json`, graph),
+        generateVisualization({
+            template: 'dist/index.html',
+            graph,
+            title: `${root.profile.name} @${root.profile.username} - ${new Date().toISOString()}`,
+            output: `${filename}.html`
+        })
+    ])
+
+    await Promise.all([
+        fileWriters.then(() => {
+            console.info(
+                "The may process still needs to wait on the rate limiting timeouts to exit cleanly. " +
+                "Killing it should not cause any data lose."
+            )
+        }),
+        cancellation
+    ])
 } catch (e) {
     if (!(e instanceof ExitPromptError)) {
         console.error(e)
