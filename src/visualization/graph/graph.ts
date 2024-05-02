@@ -181,7 +181,9 @@ export default class UserGraphVisualization extends HTMLElement {
 
     onClick(link, d) {
         const clickedNodeId = d.id;
-        const linksToUpdate = link.filter(linkData => linkData.source.id === clickedNodeId || linkData.target.id === clickedNodeId);
+        const linksToUpdate = link?.filter(linkData => linkData.source.id === clickedNodeId || linkData.target.id === clickedNodeId);
+
+        if ((linksToUpdate?._groups[0]?.length ?? 0) < 1) return
 
         if (!this.colorGroupList[d.id]) {
             this.colorGroupList[d.id] = Math.random();
@@ -207,7 +209,7 @@ export default class UserGraphVisualization extends HTMLElement {
             this.colorGroupList[user.id] = Math.random();
         }
 
-        linksToUpdate.attr("stroke", this.color(this.colorGroupList[user.id]));
+        linksToUpdate?.attr("stroke", this.color(this.colorGroupList[user.id]));
     }
 
     removeHighlights() {
