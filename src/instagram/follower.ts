@@ -191,7 +191,13 @@ export function getFollowerGraph({root, session, limits, includeFollowing}: {
                 return
             }
 
-            await createFollowerGraph({limits, graph, session, controller, includeFollowing});
+            try {
+                await createFollowerGraph({limits, graph, session, controller, includeFollowing});
+            } catch (e) {
+                controller.error(e)
+                return
+            }
+
             controller.close();
         },
         cancel: async () => {
