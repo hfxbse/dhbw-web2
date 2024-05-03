@@ -131,8 +131,11 @@ try {
                 followers,
             },
             rate: {
-                batchSize: 4000,
-                batchCount: 10,
+                batch: {
+                    size: 4000,
+                    count: 10
+                },
+                parallelTasks: 20,
                 delay: {
                     pages: {
                         upper: 40000,

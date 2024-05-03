@@ -46,13 +46,13 @@ async function rateLimiter({graph, user, phase, batchCount, limits, controller}:
     controller: ReadableStreamDefaultController<FollowerFetcherEvent>
 }) {
     const phaseProgression = Math.floor(
-        Object.entries(graph).length / (limits.rate.batchSize - batchCount * 25)
+        Object.entries(graph).length / (limits.rate.batch.size - batchCount * 25)
     )
 
     if (phase < phaseProgression) {
         printGraph(graph)
 
-        if (phaseProgression > limits.rate.batchCount) {
+        if (phaseProgression > limits.rate.batch.count) {
             const delay = randomDelay(limits.rate.delay.daily)
             controller.enqueue({
                 type: FollowerFetcherEventTypes.RATE_LIMIT_DAILY,
@@ -228,7 +228,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
         if (open.length < 1 || graph.canceled) break;  // no open task, skip remaining generations
 
         while (open.length > 0 && !graph.canceled) {
-            const batchSize = Math.floor(limits.rate.batchSize / 100)
+            const batchSize = Math.min(Math.floor(limits.rate.batch.size / 100), limits.rate.parallelTasks)
             const batch = open.splice(0, batchSize < 1 ? 1 : batchSize).map(async task => {
                 graph[task].followerIds = graph[task].followerIds ?? []
 
