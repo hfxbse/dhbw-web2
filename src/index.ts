@@ -79,16 +79,17 @@ async function streamGraph(root: UnsettledUser, filename: string, stream: Readab
             graph = value.graph
 
             const identifier = `(User: ${value.user.profile.username})`
+            const time = `[${new Date().toISOString()}]`
 
             if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER) {
-                console.log(`Reached the maximum amount of followers to include. Currently included are ${value.amount}. ${identifier}`)
+                console.log(`${time} Reached the maximum amount of followers to include. Currently included are ${value.amount}. ${identifier}`)
             } else if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING) {
-                console.log(`Reached the maximum amount of followed users to include. Currently included are ${value.amount}. ${identifier}`)
+                console.log(`${time} Reached the maximum amount of followed users to include. Currently included are ${value.amount}. ${identifier}`)
             } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_BATCH) {
-                console.log(`Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+                console.log(`${time} Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
                 await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_DAILY) {
-                console.log(`Reached follower daily limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+                console.log(`${time} Reached follower daily limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
                 await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.UPDATE) {
                 const total = Object.entries(value.graph).length
@@ -96,7 +97,7 @@ async function streamGraph(root: UnsettledUser, filename: string, stream: Readab
                 const users = value.added.users.length
 
                 console.log(
-                    `Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''} to ${value.user.profile.username}. ` +
+                    `${time} Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''} to ${value.user.profile.username}. ` +
                     `Discovered ${users > 0 ? users : 'no'} new user${users > 1 ? 's' : ''}. ` +
                     `Total user count: ${total}, completely queried users ${value.added.progress.done}.`
                 )
