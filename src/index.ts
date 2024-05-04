@@ -97,9 +97,9 @@ async function streamGraph(root: UnsettledUser, filename: string, stream: Readab
                 const users = value.added.users.length
 
                 console.log(
-                    `${time} Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''} to ${value.user.profile.username}. ` +
+                    `${time} Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''}. ` +
                     `Discovered ${users > 0 ? users : 'no'} new user${users > 1 ? 's' : ''}. ` +
-                    `Total user count: ${total}, completely queried users ${value.added.progress.done}.`
+                    `Total user count: ${total}, completely queried users ${value.added.progress.done}. ${identifier}`
                 )
             }
         }
