@@ -71,7 +71,7 @@ async function rateLimiter({graph, user, phase, taskCount, limits, controller}: 
             })
 
             await delay.delay
-            return phase
+            return phaseProgression
         }
     }
 
