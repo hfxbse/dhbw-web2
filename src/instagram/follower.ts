@@ -62,7 +62,7 @@ async function rateLimiter({graph, user, phase, taskCount, limits, controller}: 
             await delay.delay
             return 0
         } else {
-            const delay = randomDelay(limits.rate.delay.daily)
+            const delay = randomDelay(limits.rate.delay.batches)
             controller.enqueue({
                 type: FollowerFetcherEventTypes.RATE_LIMIT_BATCH,
                 user: user,
