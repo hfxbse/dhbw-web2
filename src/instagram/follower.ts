@@ -50,8 +50,6 @@ async function rateLimiter({graph, user, phase, batchCount, limits, controller}:
     )
 
     if (phase < phaseProgression) {
-        printGraph(graph)
-
         if (phaseProgression > limits.rate.batch.count) {
             const delay = randomDelay(limits.rate.delay.daily)
             controller.enqueue({
@@ -81,18 +79,6 @@ async function rateLimiter({graph, user, phase, batchCount, limits, controller}:
     await randomDelay(limits.rate.delay.pages).delay
 
     return phase
-}
-
-export function printGraph(graph: UnsettledUserGraph) {
-    console.table(Object.values(graph).map(user => {
-        return {
-            id: user.id,
-            username: user.profile.username,
-            private: user.private,
-            followerCount: user.followerIds?.length,
-            followers: user.followerIds?.map(id => graph[id].profile.username),
-        }
-    }))
 }
 
 function addFollowerToGraph({graph, followers, done, target, controller}: {

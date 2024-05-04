@@ -1,8 +1,8 @@
 import * as prompt from '@inquirer/prompts';
 import {ExitPromptError} from '@inquirer/prompts';
-import {FollowerFetcherEvent, FollowerFetcherEventTypes, getFollowerGraph, printGraph} from "./instagram/follower";
+import {FollowerFetcherEvent, FollowerFetcherEventTypes, getFollowerGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
-import {UnsettledUserGraph, UserGraph} from "./instagram/user";
+import {UnsettledUser, UnsettledUserGraph, UserGraph} from "./instagram/user";
 import {PathOrFileDescriptor, writeFileSync} from "node:fs";
 import {ReadableStream} from "node:stream/web";
 import {authenticate, readExistingSessionId, rootUser, wholeNumberPrompt} from "./cli/promps";
@@ -44,9 +44,24 @@ async function generateVisualization({template, output, graph, title}: {
 }
 
 
-async function streamGraph(stream: ReadableStream<FollowerFetcherEvent>) {
+async function streamGraph(root: UnsettledUser, filename: string, stream: ReadableStream<FollowerFetcherEvent>) {
     let graph: UnsettledUserGraph = {}
     let cancellation: Promise<void>
+
+    const updatesSaveFiles = async (graph: UnsettledUserGraph) => {
+        console.log('Waiting for profile pictures to be downloaded.')
+        const result = await settleGraph(graph)
+
+        console.log('Writing current graph to disk.')
+        return Promise.all([
+            writeGraphToFile(`${filename}.json`, result),
+            generateVisualization({
+                template: 'dist/index.html',
+                graph: result,
+                output: `${filename}.html`,
+                title: `${root.profile.name} @${root.profile.username} - ${new Date().toISOString()}`,
+            })])
+    }
 
     const reader = stream.getReader()
 
@@ -70,11 +85,11 @@ async function streamGraph(stream: ReadableStream<FollowerFetcherEvent>) {
             } else if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING) {
                 console.log(`Reached the maximum amount of followed users to include. Currently included are ${value.amount}. ${identifier}`)
             } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_BATCH) {
-                printGraph(value.graph)
                 console.log(`Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+                await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_DAILY) {
-                printGraph(value.graph)
                 console.log(`Reached follower daily limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+                await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.UPDATE) {
                 const total = Object.entries(value.graph).length
                 const followers = value.added.followers.length;
@@ -154,7 +169,7 @@ try {
         }
     })
 
-    const {graph: unsettledGraph, cancellation} = await streamGraph(stream)
+    const {graph: unsettledGraph, cancellation} = await streamGraph(root, filename, stream)
     const graph = await settleGraph(unsettledGraph)
 
     const fileWriters = Promise.allSettled([
