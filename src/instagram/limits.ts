@@ -15,6 +15,7 @@ export interface Limits {
         }
         parallelTasks: number
         delay: {
+            images: RandomDelayLimit,
             daily: RandomDelayLimit,
             batches: RandomDelayLimit,
             pages: RandomDelayLimit

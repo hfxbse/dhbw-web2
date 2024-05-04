@@ -385,10 +385,7 @@ async function fetchFollowers({session, user, page, direction, limits}: {
                 profile: {
                     username: user.username,
                     name: user.full_name,
-                    image: randomDelay({
-                        lower: 0,
-                        upper: limits.rate.delay.pages.upper
-                    }).delay.then(() => downloadProfilePicture(user.profile_pic_url))
+                    image: randomDelay(limits.rate.delay.images).delay.then(() => downloadProfilePicture(user.profile_pic_url))
                 },
                 public: !user.is_private,
                 private: user.is_private && id != session.user.id

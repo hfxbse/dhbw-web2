@@ -152,6 +152,10 @@ try {
                 },
                 parallelTasks: 20,
                 delay: {
+                    images: {
+                        upper: 5000,
+                        lower: 500
+                    },
                     pages: {
                         upper: 40000,
                         lower: 20000
