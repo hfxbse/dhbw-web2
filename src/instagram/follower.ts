@@ -154,7 +154,6 @@ export function getFollowerGraph({root, session, limits, includeFollowing}: {
 
     return new ReadableStream<FollowerFetcherEvent>({
         start: async (controller: ReadableStreamDefaultController<FollowerFetcherEvent>) => {
-
             if (root.private) {
                 controller.enqueue({
                     type: FollowerFetcherEventTypes.UPDATE,

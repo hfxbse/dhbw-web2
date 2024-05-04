@@ -187,7 +187,7 @@ try {
     await Promise.all([
         fileWriters.then(() => {
             console.info(
-                "The may process still needs to wait on the rate limiting timeouts to exit cleanly. " +
+                "The process may still needs to wait on the rate limiting timeouts to exit cleanly. " +
                 "Killing it should not cause any data lose."
             )
         }),
