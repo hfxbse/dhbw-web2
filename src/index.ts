@@ -170,6 +170,8 @@ try {
     })
 
     const {graph: unsettledGraph, cancellation} = await streamGraph(root, filename, stream)
+
+    console.log('Waiting for profile pictures to be downloaded.')
     const graph = await settleGraph(unsettledGraph)
 
     const fileWriters = Promise.allSettled([

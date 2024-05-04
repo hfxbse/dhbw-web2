@@ -1,5 +1,5 @@
 import SessionData, {sessionToCookie} from "./session-data";
-import {RandomDelayLimit, Limits} from "./limits";
+import {Limits, RandomDelayLimit} from "./limits";
 import {downloadProfilePicture, UnsettledUser, UnsettledUserGraph} from "./user";
 import {ReadableStream} from "node:stream/web";
 import {hasJsonBody} from "./request";
@@ -75,19 +75,32 @@ async function rateLimiter({graph, user, phase, taskCount, limits, controller}: 
         }
     }
 
-    // delay between retrieving the next follower page
     await randomDelay(limits.rate.delay.pages).delay
 
     return phase
 }
 
-function addFollowerToGraph({graph, followers, done, target, controller}: {
+interface Task {
+    job: () => Promise<FollowerPage>,
+    user: UnsettledUser,
+    noWait?: boolean,
+    previousResults?: TaskResult[],
+    stop?: boolean
+    direction: FollowerDirection
+}
+
+interface TaskResult {
+    additionalUsers: UnsettledUser[],
+    additionalFollowers: number[],
+    completedUsers: number[],
+    graph: UnsettledUserGraph
+}
+
+function addFollowerToGraph({graph, followers, target}: {
     graph: UnsettledUserGraph,
     followers: UnsettledUser[],
-    done: Set<number>,
     target: number,
-    controller: ReadableStreamDefaultController<FollowerFetcherEvent>
-},) {
+},): TaskResult {
     const followerIds = new Set(graph[target].followerIds)
     const additionalFollowers = followers
         .map(follower => follower.id)
@@ -97,55 +110,38 @@ function addFollowerToGraph({graph, followers, done, target, controller}: {
     const additionalUsers = followers.filter(follower => graph[follower.id] === undefined)
     additionalUsers.forEach(user => graph[user.id] = user)
 
-    additionalUsers.filter(follower => follower.private)
+    const done = additionalUsers.filter(follower => follower.private)
         .map(follower => follower.id)
-        .forEach(id => done.add(id))
 
-    controller.enqueue({
-        type: FollowerFetcherEventTypes.UPDATE,
-        user: graph[target],
-        added: {
-            followers: additionalFollowers,
-            users: additionalUsers,
-            progress: {
-                done: done.size
-            }
-        },
-        graph
-    })
+    return {additionalFollowers, additionalUsers, completedUsers: done, graph: {...graph}}
 }
 
-function addFollowingToGraph({graph, following, done, target, controller}: {
+function addFollowingToGraph({graph, following, target}: {
     graph: UnsettledUserGraph,
     following: UnsettledUser[],
-    done: Set<number>,
     target: number,
-    controller: ReadableStreamDefaultController<FollowerFetcherEvent>
-},) {
+}): TaskResult[] {
     if (!graph[target].followingCount) graph[target].followingCount = 0
     graph[target].followingCount += following.length
 
-    following.filter(following => graph[following.id] !== undefined).forEach(user => addFollowerToGraph({
-        graph,
-        followers: [graph[target]],
-        done,
-        controller,
-        target: user.id
+    const results: TaskResult[] = following
+        .filter(following => graph[following.id] !== undefined)
+        .map(user => addFollowerToGraph({
+            graph,
+            followers: [graph[target]],
+            target: user.id
+        }))
+
+    return results.concat(following.filter(following => graph[following.id] === undefined).map(user => {
+        graph[user.id] = {...user, followerIds: [target]};
+
+        return {
+            completedUsers: results.reduce((done: number[], result) => done.concat(result.completedUsers), []),
+            additionalUsers: [user],
+            additionalFollowers: [target],
+            graph: {...graph}
+        }
     }))
-
-    following.filter(following => graph[following.id] === undefined).forEach(user => {
-        graph[user.id] = {
-            ...user,
-            followerIds: [target]
-        };
-
-        controller.enqueue({
-            graph: {...graph},
-            type: FollowerFetcherEventTypes.UPDATE,
-            user,
-            added: {users: [user], progress: {done: done.size}, followers: [target]}
-        })
-    })
 }
 
 export function getFollowerGraph({root, session, limits, includeFollowing}: {
@@ -156,11 +152,8 @@ export function getFollowerGraph({root, session, limits, includeFollowing}: {
 }): ReadableStream<FollowerFetcherEvent> {
     const graph: UnsettledUserGraph = {[root.id]: root}
 
-    let controller: ReadableStreamDefaultController<FollowerFetcherEvent>
-
     return new ReadableStream<FollowerFetcherEvent>({
-        start: async (c: ReadableStreamDefaultController<FollowerFetcherEvent>) => {
-            controller = c
+        start: async (controller: ReadableStreamDefaultController<FollowerFetcherEvent>) => {
 
             if (root.private) {
                 controller.enqueue({
@@ -180,12 +173,7 @@ export function getFollowerGraph({root, session, limits, includeFollowing}: {
                 return
             }
 
-            try {
-                await createFollowerGraph({limits, graph, session, controller, includeFollowing});
-            } catch (e) {
-                controller.error(e)
-                return
-            }
+            await createFollowerGraph({limits, graph, session, controller, includeFollowing});
 
             controller.close();
         },
@@ -199,7 +187,42 @@ function excess(current: number, limit: number, addition: any[]) {
     return addition.slice(addition.length - (current - limit))
 }
 
-type Task = { job: () => Promise<FollowerPage>, user: UnsettledUser, noWait?: boolean }
+async function taskRunner(graph: UnsettledUserGraph, task: Task, limits: Limits): Promise<Task | null> {
+    const result = await task.job()
+    const user = graph[task.user.id]
+
+    let additions: TaskResult[] = []
+
+    if (result.direction === FollowerDirection.FOLLOWER) {
+        additions = [addFollowerToGraph({graph, followers: result.page, target: task.user.id})]
+
+        if (!limits.depth.followers || user.followerIds.length <= limits.depth.followers) {
+            return {user, job: result.next, previousResults: additions, direction: result.direction}
+        }
+    } else if (result.direction === FollowerDirection.FOLLOWING) {
+        additions = addFollowingToGraph({graph, following: result.page, target: task.user.id})
+
+        if (!limits.depth.followers || (user.followingCount ?? 0) <= limits.depth.followers) {
+            return {user, job: result.next, previousResults: additions, direction: result.direction}
+        }
+    }
+
+    const followers = result.direction === FollowerDirection.FOLLOWER;
+    const amount = followers ? user.followerIds.length : user.followingCount
+
+    return {
+        job: null,
+        stop: true,
+        direction: result.direction,
+        user,
+        previousResults: [...additions, {
+            completedUsers: excess(amount, limits.depth.followers, result.page),
+            additionalUsers: [],
+            additionalFollowers: [],
+            graph: {...graph}
+        }]
+    }
+}
 
 async function createFollowerGraph({controller, limits, graph, session, includeFollowing}: {
     controller: ReadableStreamDefaultController<FollowerFetcherEvent>,
@@ -220,7 +243,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                 tasks.push({
                     job: () => fetchFollowers({session, user, limits, direction: FollowerDirection.FOLLOWER}),
                     user,
-                    noWait: true
+                    noWait: true,
                 })
 
                 if (includeFollowing) {
@@ -236,12 +259,19 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
 
         if (taskQueue.length < 1 || graph.canceled) break;  // no open task, skip remaining generations
 
-        while (taskQueue.length > 0) {
-            // Users per response: followers = 25, following = 200
-            const maxParallel = Math.min(Math.floor(limits.rate.batch.size / 225), limits.rate.parallelTasks)
+        // Users per response: followers = 25, following = 200
+        const maxParallel = Math.min(
+            Math.floor(limits.rate.batch.size / (25 + (includeFollowing ? 200 : 0))),
+            limits.rate.parallelTasks
+        )
 
-            const running = taskQueue.splice(0, Math.max(maxParallel, 1)).map(async (task) => {
-                if (!task.job) return
+        const runners = new Array(maxParallel).fill(async () => {
+            while (taskQueue.length > 0) {
+                const task = taskQueue.pop()
+                if (!task.job) {
+                    done.add(task.user.id)
+                    continue
+                }
 
                 if (!task.noWait) phase = await rateLimiter({
                     graph,
@@ -249,43 +279,45 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                     phase,
                     limits,
                     controller,
-                    taskCount: Math.max(Math.min(maxParallel, taskQueue.length), 1)
+                    taskCount: taskQueue.length
                 })
 
-                const result = await task.job()
-                const user = graph[task.user.id]
+                const next = await taskRunner(graph, task, limits)
 
-                if (result.direction === FollowerDirection.FOLLOWER) {
-                    addFollowerToGraph({graph, followers: result.page, done, controller, target: task.user.id})
+                next.previousResults.forEach(result => {
+                    result.completedUsers.forEach((id) => done.add(id))
 
-                    if (!limits.depth.followers || user.followerIds.length <= limits.depth.followers) {
-                        taskQueue.push({user, job: result.next})
-                        return
-                    }
-                } else if (result.direction === FollowerDirection.FOLLOWING) {
-                    addFollowingToGraph({graph, following: result.page, done, controller, target: task.user.id})
+                    controller.enqueue({
+                        type: FollowerFetcherEventTypes.UPDATE,
+                        user: task.user,
+                        graph: {...result.graph},
+                        added: {
+                            followers: result.additionalFollowers,
+                            users: result.additionalUsers,
+                            progress: {
+                                done: done.size
+                            }
+                        }
+                    })
+                })
 
-                    if (!limits.depth.followers || (user.followingCount ?? 0) <= limits.depth.followers) {
-                        taskQueue.push({user, job: result.next})
-                        return
-                    }
+                if (next.stop) {
+                    const followers = task.direction === FollowerDirection.FOLLOWER;
+                    const amount = followers ? graph[task.user.id].followerIds.length : graph[task.user.id].followingCount
+
+                    controller.enqueue({
+                        type: followers ? FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER : FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING,
+                        user: task.user,
+                        graph: {...graph},
+                        amount
+                    })
+                } else {
+                    taskQueue.push(next)
                 }
+            }
+        }).map(runner => runner())
 
-                const followers = result.direction === FollowerDirection.FOLLOWER;
-                const amount = followers ? user.followerIds.length : user.followingCount
-
-                excess(amount, limits.depth.followers, result.page).forEach(user => done.add(user.id))
-
-                controller.enqueue({
-                    type: followers ? FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER : FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING,
-                    user: user,
-                    graph: {...graph},
-                    amount
-                })
-            })
-
-            await Promise.all(running)
-        }
+        await Promise.all(runners).catch((e) => controller.error(e))
     }
 
     return graph
