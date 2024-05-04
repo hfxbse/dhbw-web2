@@ -37,17 +37,14 @@ function randomDelay(limit: RandomDelayLimit) {
 }
 
 
-async function rateLimiter({graph, user, phase, taskCount, limits, controller}: {
+async function rateLimiter({graph, user, phase, limits, controller}: {
     graph: UnsettledUserGraph,
     user: UnsettledUser,
     phase: number,
-    taskCount: number
     limits: Limits,
     controller: ReadableStreamDefaultController<FollowerFetcherEvent>
 }) {
-    const phaseProgression = Math.floor(
-        Object.entries(graph).length / (limits.rate.batch.size - taskCount * 25)
-    )
+    const phaseProgression = Math.floor(Object.entries(graph).length / limits.rate.batch.size)
 
     if (phase < phaseProgression) {
         if (phaseProgression > limits.rate.batch.count) {
@@ -277,8 +274,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                     user: task.user,
                     phase,
                     limits,
-                    controller,
-                    taskCount: taskQueue.length
+                    controller
                 })
 
                 const next = await taskRunner(graph, task, limits)
