@@ -11,7 +11,7 @@ customElements.define('material-icon', MaterialIcon)
 customElements.define('user-count', UserCount)
 
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
     const data = decodeURIComponent(atob("REPLACE-ME-WITH-USER-GRAPH"))
     const graph: UserGraph = JSON.parse(data)
     const users = Object.values(graph)
