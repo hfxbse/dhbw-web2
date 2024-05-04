@@ -324,7 +324,7 @@ enum FollowerDirection {
 
 type FollowerPage = { page: UnsettledUser[], next: null | (() => Promise<FollowerPage>), direction: FollowerDirection }
 
-async function fetchFollowers({session, user, page, direction, limits}: {
+async function fetchFollowers({session, user: target, page, direction, limits}: {
     session: SessionData,
     user: UnsettledUser,
     page?: undefined | string | null,
@@ -334,7 +334,7 @@ async function fetchFollowers({session, user, page, direction, limits}: {
     const query = page ? `?max_id=${page}` : '';
     const directionPath = direction === FollowerDirection.FOLLOWING ? 'following' : 'followers'
 
-    const response = await fetch(`https://www.instagram.com/api/v1/friendships/${user.id}/${directionPath}/${query}`, {
+    const response = await fetch(`https://www.instagram.com/api/v1/friendships/${target.id}/${directionPath}/${query}`, {
         headers: {
             "Sec-Fetch-Site": "same-origin",
             "X-IG-App-ID": "936619743392459",
@@ -374,22 +374,20 @@ async function fetchFollowers({session, user, page, direction, limits}: {
     return {
         direction,
         page: result.users.map((user) => {
-            const id = parseInt(user.id, 10)
-
             return {
-                id,
+                id: parseInt(user.id, 10),
                 profile: {
                     username: user.username,
                     name: user.full_name,
                     image: randomDelay(limits.rate.delay.images).delay.then(() => downloadProfilePicture(user.profile_pic_url))
                 },
                 public: !user.is_private,
-                private: user.is_private && id != session.user.id
+                private: user.is_private && target.id != session.user.id
             }
         }),
         next: result.next_max_id ? () => fetchFollowers({
             session,
-            user: user,
+            user: target,
             page: result.next_max_id,
             direction,
             limits
