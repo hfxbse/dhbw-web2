@@ -8,6 +8,7 @@ export interface User {
         image: string
     },
     followerIds?: number[],
+    followingCount?: number
     private?: boolean,
     public: boolean,
     personal?: boolean
@@ -21,6 +22,7 @@ export interface UnsettledUser {
         image: Promise<Blob> | null,
     }
     followerIds?: number[],
+    followingCount?: number
     private?: boolean,
     public: boolean,
     personal?: boolean
