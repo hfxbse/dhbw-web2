@@ -310,7 +310,11 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                     }
                 }
 
-                await Promise.all([followers(), (includeFollowing ? following() : Promise.resolve())])
+                try {
+                    await Promise.all([followers(), (includeFollowing ? following() : Promise.resolve())])
+                } catch (e) {
+                    controller.error(e)
+                }
 
                 done.add(task);
             });
