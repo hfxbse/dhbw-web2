@@ -256,7 +256,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                 return tasks
             }, [])
 
-        if (taskQueue.length < 1 || graph.canceled) break;  // no open task, skip remaining generations
+        if (taskQueue.length < 1) break;  // no open task, skip remaining generations
 
         // Users per response: followers = 25, following = 200
         const maxParallel = Math.min(
@@ -265,7 +265,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
         )
 
         const runners = new Array(maxParallel).fill(async () => {
-            while (taskQueue.length > 0) {
+            while (taskQueue.length > 0 && !graph.canceled) {
                 const task = taskQueue.pop()
                 if (!task.job) {
                     done.add(task.user.id)
