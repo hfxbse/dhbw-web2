@@ -264,7 +264,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
             limits.rate.parallelTasks
         )
 
-        const runners = new Array(maxParallel).fill(async () => {
+        const runners = new Array(Math.max(maxParallel, 1)).fill(async () => {
             while (taskQueue.length > 0 && !graph.canceled) {
                 const task = taskQueue.pop()
                 if (!task.job) {
