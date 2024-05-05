@@ -25,7 +25,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     toolbar.addEventListener("remove-highlighting", () => visualization.removeHighlights());
     toolbar.addEventListener("reset-positioning", () => visualization.resetPositioning())
 
-    toolbar.addEventListener("search-user", function (event: CustomEvent) {
+    toolbar.addEventListener("search-user", async function (event: CustomEvent) {
         const matchingUser = users.find((user: User) => user.profile.username === event.detail);
 
         if (!matchingUser) return toolbar.setSearchError(`No user found with the exact username: ${event.detail}`)
