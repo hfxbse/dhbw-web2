@@ -9,7 +9,10 @@ export enum FollowerFetcherEventTypes {
 }
 
 export interface FollowerFetcherAddition {
-    followers: number[],
+    followers: {
+        target: UnsettledUser,
+        ids: number[]
+    },
     users: UnsettledUser[],
     progress: {
         done: number
@@ -88,7 +91,10 @@ interface Task {
 
 interface TaskResult {
     additionalUsers: UnsettledUser[],
-    additionalFollowers: number[],
+    additionalFollowers: {
+        target: UnsettledUser,
+        ids: number[]
+    },
     completedUsers: number[],
     graph: UnsettledUserGraph
 }
@@ -110,7 +116,12 @@ function addFollowerToGraph({graph, followers, target}: {
     const done = additionalUsers.filter(follower => follower.private)
         .map(follower => follower.id)
 
-    return {additionalFollowers, additionalUsers, completedUsers: done, graph: {...graph}}
+    return {
+        additionalFollowers: {ids: additionalFollowers, target: graph[target]},
+        additionalUsers,
+        completedUsers: done,
+        graph: {...graph}
+    }
 }
 
 function addFollowingToGraph({graph, following, target}: {
@@ -135,7 +146,10 @@ function addFollowingToGraph({graph, following, target}: {
         return {
             completedUsers: results.reduce((done: number[], result) => done.concat(result.completedUsers), []),
             additionalUsers: [user],
-            additionalFollowers: [target],
+            additionalFollowers: {
+                target: user,
+                ids: [target]
+            },
             graph: {...graph}
         }
     }))
@@ -156,7 +170,10 @@ export function getFollowerGraph({root, session, limits, includeFollowing}: {
                     type: FollowerFetcherEventTypes.UPDATE,
                     user: root,
                     added: {
-                        followers: [],
+                        followers: {
+                            target: root,
+                            ids: []
+                        },
                         users: [root],
                         progress: {
                             done: 1
@@ -214,7 +231,7 @@ async function taskRunner(graph: UnsettledUserGraph, task: Task, limits: Limits)
         previousResults: [...additions, {
             completedUsers: excess(amount, limits.depth.followers, result.page),
             additionalUsers: [],
-            additionalFollowers: [],
+            additionalFollowers: {ids: [], target: task.user},
             graph: {...graph}
         }]
     }
@@ -264,10 +281,7 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
         const runners = new Array(Math.max(maxParallel, 1)).fill(async () => {
             while (taskQueue.length > 0 && !graph.canceled) {
                 const task = taskQueue.pop()
-                if (!task.job) {
-                    done.add(task.user.id)
-                    continue
-                }
+                const followers = task.direction === FollowerDirection.FOLLOWER;
 
                 if (!task.noWait) phase = await rateLimiter({
                     graph,
@@ -297,7 +311,6 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                 })
 
                 if (next.stop) {
-                    const followers = task.direction === FollowerDirection.FOLLOWER;
                     const amount = followers ? graph[task.user.id].followerIds.length : graph[task.user.id].followingCount
 
                     controller.enqueue({
@@ -306,8 +319,10 @@ async function createFollowerGraph({controller, limits, graph, session, includeF
                         graph: {...graph},
                         amount
                     })
-                } else {
+                } else if (next.job) {
                     taskQueue.push(next)
+                } else {
+                    done.add(task.user.id)
                 }
             }
         }).map(runner => runner())

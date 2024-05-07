@@ -16,7 +16,7 @@ export async function settleGraph(graph: UnsettledUserGraph) {
                 image: await user.profile.image
                     .then((image: Blob | null) => {
                         if (!image) {
-                            console.error(`Failed to download profile picture. (User: ${user.profile.username})`)
+                            console.error(`Failed to download profile picture. (${user.profile.username})`)
                             return null;
                         }
 

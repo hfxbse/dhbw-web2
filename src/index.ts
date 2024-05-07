@@ -78,7 +78,7 @@ async function streamGraph(root: UnsettledUser, filename: string, stream: Readab
 
             graph = value.graph
 
-            const identifier = `(User: ${value.user.profile.username})`
+            const identifier = `(${value.user.profile.username})`
             const time = `[${new Date().toISOString()}]`
 
             if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER) {
@@ -93,11 +93,13 @@ async function streamGraph(root: UnsettledUser, filename: string, stream: Readab
                 await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.UPDATE) {
                 const total = Object.entries(value.graph).length
-                const followers = value.added.followers.length;
+                const followers = value.added.followers.ids.length;
                 const users = value.added.users.length
+                const targetUsername = value.added.followers.target.profile.username;
+
 
                 console.log(
-                    `${time} Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''}. ` +
+                    `${time} Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''} to ${targetUsername}. ` +
                     `Discovered ${users > 0 ? users : 'no'} new user${users > 1 ? 's' : ''}. ` +
                     `Total user count: ${total}, completely queried users ${value.added.progress.done}. ${identifier}`
                 )
