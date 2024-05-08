@@ -1,6 +1,6 @@
 import * as prompt from '@inquirer/prompts';
 import {ExitPromptError} from '@inquirer/prompts';
-import {FollowerFetcherEvent, FollowerFetcherEventTypes, getFollowerGraph} from "./instagram/follower";
+import {FollowerFetcherEvent, FollowerFetcherEventTypes, fetchFollowerGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
 import {UnsettledUser, UnsettledUserGraph, UserGraph} from "./instagram/user";
 import {PathOrFileDescriptor, writeFileSync} from "node:fs";
@@ -139,7 +139,7 @@ try {
 
     const includeFollowing = await prompt.confirm({message: "Include following?", default: true})
 
-    const stream = getFollowerGraph({
+    const stream = fetchFollowerGraph({
         includeFollowing,
         root,
         session,

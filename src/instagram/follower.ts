@@ -155,7 +155,7 @@ function addFollowingToGraph({graph, following, target}: {
     }))
 }
 
-export function getFollowerGraph({root, session, limits, includeFollowing}: {
+export function fetchFollowerGraph({root, session, limits, includeFollowing}: {
     root: UnsettledUser,
     session: SessionData,
     includeFollowing: boolean,
