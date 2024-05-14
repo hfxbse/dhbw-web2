@@ -1,159 +1,23 @@
 import * as prompt from '@inquirer/prompts';
 import {ExitPromptError} from '@inquirer/prompts';
-import {
-    encryptPassword,
-    fetchVerification,
-    login,
-    TwoFactorInformation,
-    TwoFactorRequired,
-    VerificationData,
-    verify2FA
-} from "./instagram/login";
-import {FollowerFetcherEvent, FollowerFetcherEventTypes, getFollowerGraph, printGraph} from "./instagram/follower";
+import {FollowerFetcherEvent, FollowerFetcherEventTypes, getFollowerGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
-import {fetchUser, UnsettledUser, User, UnsettledUserGraph, UserGraph} from "./instagram/user";
-import {writeFileSync} from "node:fs";
+import {UnsettledUser, UnsettledUserGraph, UserGraph} from "./instagram/user";
+import {PathOrFileDescriptor, writeFileSync} from "node:fs";
 import {ReadableStream} from "node:stream/web";
+import {authenticate, readExistingSessionId, rootUser, wholeNumberPrompt} from "./cli/promps";
+import {settleGraph} from "./cli/graph";
+import {readFileSync} from "fs";
 
 
-async function authenticate(): Promise<SessionData> {
-    const verification = await fetchVerification()
-
-    while (true) {
-        const user = await prompt.input({message: "Instagram username, phone number, or email: "})
-        const password = await prompt.password({message: "Password: "})
-
-        const encryptedPassword = await encryptPassword({password, key: verification.key})
-
-        try {
-            return await login({user, password: encryptedPassword, verification})
-        } catch (e) {
-            if (!(e instanceof TwoFactorRequired)) {
-                console.error((e as Error).message)
-                continue
-            }
-
-            return await twoFactor({info: (e as TwoFactorRequired).info, verification})
-        }
-    }
-}
-
-async function twoFactor({verification, info}: {
-    verification: VerificationData,
-    info: TwoFactorInformation
-}): Promise<SessionData> {
-    while (true) {
-        const code = await prompt.input({message: "Two factor authentication code: "})
-
-        try {
-            return await verify2FA({verification, code, info})
-        } catch (e) {
-            console.error(e.message)
-        }
-    }
-}
-
-async function readExistingSessionId(): Promise<SessionData> {
-    while (true) {
-        const sessionId = await prompt.password({message: "Session id: "})
-        const userId = parseInt(sessionId.split("%")[0], 10)
-
-        if(isNaN(userId)) {
-            console.log("Session id seems to be invalid. Try again.")
-            continue
-        }
-
-        return {
-            id: sessionId,
-            user: {
-                id: parseInt(sessionId.split("%")[0], 10)
-            }
-        }
-    }
-}
-
-async function blobToDataUrl(blob: Blob) {
-    const buffer = Buffer.from(await blob.arrayBuffer());
-    return new URL("data:" + blob.type + ';base64,' + buffer.toString('base64'));
-}
-
-async function rootUser({session}) {
-    while (true) {
-        try {
-            const rootUsername = await prompt.input({
-                message: "Starting point account username:  ",
-                default: session.user.username
-            })
-
-            const rootUser = await fetchUser(rootUsername.trim(), session);
-            console.dir({
-                ...rootUser,
-                profile: {
-                    ...rootUser.profile,
-                    image: await rootUser.profile.image.then(blobToDataUrl).then(url => url.href)
-                }
-            })
-
-            if (await prompt.confirm({message: "Continue with this user?", default: true})) {
-                return rootUser
-            }
-        } catch (e) {
-            if ((e instanceof ExitPromptError)) throw e;
-
-            console.error(`Error: ${e.message ?? e}\n\nCould not load user. Try again.`)
-        }
-    }
-}
-
-async function wholeNumberPrompt({message, defaultValue}: { message: string, defaultValue: number }) {
-    return prompt.input({
-        message,
-        default: defaultValue.toString(10),
-        validate: input => /^\d*$/.test(input)
-    }).then(input => parseInt(input, 10))
-}
-
-async function settleGraph(graph: UnsettledUserGraph) {
-    delete graph["canceled"]
-
-    const downloads: Promise<User>[] = Object.values(graph).map(async user => {
-        return {
-            ...user,
-            profile: {
-                ...user.profile,
-                image: await user.profile.image
-                    .then(blobToDataUrl)
-                    .catch((reason: any) => {
-                        console.error({
-                            message: `Failed to download profile picture. (User: ${user.profile.username})`,
-                            reason
-                        })
-
-                        return null;
-                    })
-            }
-        }
-    })
-
-    const settled: UserGraph = (await Promise.all(downloads)).reduce((graph, user) => {
-        graph[user.id] = user
-        return graph
-    }, {})
-
-    return settled
-}
-
-const writeGraphToFile = async (root: UnsettledUser, graph: UnsettledUserGraph) => {
-    const filename = `${root.id}:${root.profile.username}:${new Date().toISOString()}.json`
-    const data = await settleGraph(graph)
-
+async function writeGraphToFile(filename: string, graph: UserGraph) {
     try {
-        writeFileSync(filename, JSON.stringify(data, null, 2))
+        writeFileSync(filename, JSON.stringify(graph, null, 2))
         console.log(`Wrote graph into ${filename}.`)
     } catch (error) {
         console.error({message: `Cannot write graph into ${filename}. Using stdout instead.`, error})
         await new Promise(resolve => setTimeout(() => {
-            console.log(JSON.stringify(data));
+            console.log(JSON.stringify(graph));
             resolve(undefined);
         }, 500))
     }
@@ -161,9 +25,43 @@ const writeGraphToFile = async (root: UnsettledUser, graph: UnsettledUserGraph) 
     return filename
 }
 
-async function streamGraph(stream: ReadableStream<FollowerFetcherEvent>) {
+async function generateVisualization({template, output, graph, title}: {
+    template: PathOrFileDescriptor,
+    output: string,
+    title: string
+    graph: UserGraph | string
+}) {
+    if (typeof graph !== 'string') {
+        graph = JSON.stringify(graph);
+    }
+
+    const result = readFileSync(template, {encoding: 'utf-8'})
+        .replace('REPLACE-ME-WITH-TITLE', title)
+        .replace('REPLACE-ME-WITH-USER-GRAPH', btoa(encodeURIComponent(graph)));
+
+    writeFileSync(output, result)
+    console.log(`Created visualization for graph in ${output}.`)
+}
+
+
+async function streamGraph(root: UnsettledUser, filename: string, stream: ReadableStream<FollowerFetcherEvent>) {
     let graph: UnsettledUserGraph = {}
     let cancellation: Promise<void>
+
+    const updatesSaveFiles = async (graph: UnsettledUserGraph) => {
+        console.log('Waiting for profile pictures to be downloaded.')
+        const result = await settleGraph(graph)
+
+        console.log('Writing current graph to disk.')
+        return Promise.all([
+            writeGraphToFile(`${filename}.json`, result),
+            generateVisualization({
+                template: 'dist/index.html',
+                graph: result,
+                output: `${filename}.html`,
+                title: `${root.profile.name} @${root.profile.username} - ${new Date().toISOString()}`,
+            })])
+    }
 
     const reader = stream.getReader()
 
@@ -187,11 +85,11 @@ async function streamGraph(stream: ReadableStream<FollowerFetcherEvent>) {
             } else if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING) {
                 console.log(`Reached the maximum amount of followed users to include. Currently included are ${value.amount}. ${identifier}`)
             } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_BATCH) {
-                printGraph(value.graph)
                 console.log(`Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+                await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_DAILY) {
-                printGraph(value.graph)
                 console.log(`Reached follower daily limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+                await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.UPDATE) {
                 const total = Object.entries(value.graph).length
                 const followers = value.added.followers.length;
@@ -217,7 +115,7 @@ async function streamGraph(stream: ReadableStream<FollowerFetcherEvent>) {
 
 
 try {
-    const existingSession = await prompt.confirm({message: "Use an existing session id?", default: false});
+    const existingSession = await prompt.confirm({message: "Use an existing session id?", default: true});
 
     const session: SessionData = await (!existingSession ? authenticate() : readExistingSessionId())
 
@@ -226,6 +124,7 @@ try {
     }
 
     const root = await rootUser({session})
+    const filename = `${root.id}:${root.profile.username}:${new Date().toISOString()}`
 
     const generations = await wholeNumberPrompt({
         message: "Generations to include: ", defaultValue: 1
@@ -247,12 +146,15 @@ try {
                 followers,
             },
             rate: {
-                batchSize: 100,
-                batchCount: 2,
+                batch: {
+                    size: 4000,
+                    count: 10
+                },
+                parallelTasks: 20,
                 delay: {
                     pages: {
-                        upper: 5000,
-                        lower: 3000
+                        upper: 40000,
+                        lower: 20000
                     },
                     batches: {
                         upper: 35 * 60 * 1000,
@@ -267,13 +169,28 @@ try {
         }
     })
 
-    const {graph, cancellation} = await streamGraph(stream)
-    await Promise.all([writeGraphToFile(root, graph).then(() => {
-        console.info(
-            "The may process still needs to wait on the rate limiting timeouts to exit cleanly. " +
-            "Killing it should not cause any data lose."
-        )
-    }), cancellation])
+    const {graph: unsettledGraph, cancellation} = await streamGraph(root, filename, stream)
+    const graph = await settleGraph(unsettledGraph)
+
+    const fileWriters = Promise.allSettled([
+        writeGraphToFile(`${filename}.json`, graph),
+        generateVisualization({
+            template: 'dist/index.html',
+            graph,
+            title: `${root.profile.name} @${root.profile.username} - ${new Date().toISOString()}`,
+            output: `${filename}.html`
+        })
+    ])
+
+    await Promise.all([
+        fileWriters.then(() => {
+            console.info(
+                "The may process still needs to wait on the rate limiting timeouts to exit cleanly. " +
+                "Killing it should not cause any data lose."
+            )
+        }),
+        cancellation
+    ])
 } catch (e) {
     if (!(e instanceof ExitPromptError)) {
         console.error(e)

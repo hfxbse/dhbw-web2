@@ -9,7 +9,7 @@ npm install
 To compile and run the program use
 
 ```
-npm run run
+npm run cli
 ```
 
 Tests are written with [Jest](https://jestjs.io/). Run them via

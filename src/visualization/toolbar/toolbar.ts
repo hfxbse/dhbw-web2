@@ -6,19 +6,19 @@ import './toolbar.css'
 export default class GraphToolbar extends HTMLElement {
     // noinspection JSUnusedGlobalSymbols
     connectedCallback() {
-        this.setAttribute('class', `${this.getAttribute('class') ?? ''} graph-toolbar`.trim())
+        this.classList.add('graph-toolbar')
 
         this.innerHTML = `
             <button class="remove-highlighting">
-                ${this.decodeIcon(MaterialRemoveColor)}
+                <material-icon data="${MaterialRemoveColor}"></material-icon>
             </button>
             <button class="reset-positioning">
-                ${this.decodeIcon(MaterialZoomIn)}
+                <material-icon data="${MaterialZoomIn}"></material-icon>
             </button>
             <label>
                 <input placeholder="Search username…">
                 <button class="submit-search">
-                    ${this.decodeIcon(MaterialSearch)}
+                    <material-icon data="${MaterialSearch}"></material-icon>
                 </button>
             </label>
         `
@@ -40,17 +40,6 @@ export default class GraphToolbar extends HTMLElement {
             if (event.key !== 'Enter') return
             dispatchSearch()
         })
-    }
-
-    decodeIcon(data: string): string {
-        const preamble = 'data:image/svg+xml;base64,'
-
-        if (data.startsWith(preamble)) {
-            return atob(data.substring(preamble.length))
-        } else {
-            // noinspection HtmlRequiredAltAttribute
-            return `<img src="${data}">`
-        }
     }
 
     setSearchError(message?: string) {

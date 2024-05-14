@@ -4,7 +4,7 @@
     --placeholder-text-color: #696969;
 
     --element-background: #FFF;
-    --element-boarder: 1px solid black;
+    --element-border: 1px solid black;
     --element-radius: 8px;
     --element-padding-horizontal: 16px;
     --element-padding-vertical: 8px;
@@ -22,7 +22,7 @@
         --placeholder-text-color: #bdbdbd;
 
         --element-background: #4d4d4d;
-        --element-boarder: 1px solid #e8e8e8;
+        --element-border: 1px solid #e8e8e8;
         --element-radius: 8px;
         --element-padding-horizontal: 16px;
         --element-padding-vertical: 8px;
@@ -54,11 +54,17 @@ user-graph {
     overflow: hidden;
 }
 
-graph-toolbar {
-    width: 65ch;
-    max-width: calc(100% - 2 * var(--element-padding-horizontal));
+footer {
+    display: flex;
+    gap: calc(var(--element-padding-horizontal) * 2);
+    justify-content: space-between;
 
     position: fixed;
     bottom: var(--element-padding-horizontal);
+    left: var(--element-padding-horizontal);
     right: var(--element-padding-horizontal);
+}
+
+graph-toolbar {
+    flex: 0 1 65ch;
 }

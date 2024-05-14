@@ -4,7 +4,8 @@
   "description": "My webpack project",
   "private": true,
   "scripts": {
-    "run": "node --import tsx ./src/index.ts",
+    "precli": "webpack --mode=production --node-env=production",
+    "cli": "node --import tsx ./src/index.ts",
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "build": "webpack --mode=production --node-env=production",
     "build:dev": "webpack --mode=development",

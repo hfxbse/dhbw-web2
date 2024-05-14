@@ -9,8 +9,11 @@ export interface Limits {
         followers: number,
     }
     rate: {
-        batchSize: number,
-        batchCount: number,
+        batch: {
+            size: number,
+            count: number,
+        }
+        parallelTasks: number
         delay: {
             daily: RandomDelayLimit,
             batches: RandomDelayLimit,
