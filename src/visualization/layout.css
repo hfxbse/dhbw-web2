@@ -1,0 +1,64 @@
+:root {
+    --background: #f5f5f5;
+    --text-color: #000;
+    --placeholder-text-color: #696969;
+
+    --element-background: #FFF;
+    --element-boarder: 1px solid black;
+    --element-radius: 8px;
+    --element-padding-horizontal: 16px;
+    --element-padding-vertical: 8px;
+    --element-padding: var(--element-padding-vertical) var(--element-padding-horizontal);
+
+    --element-padding-between: var(--element-padding-vertical);
+
+    --element-error-color: hsl(0, 100%, 38%);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background: #383838;
+        --text-color: #FFF;
+        --placeholder-text-color: #bdbdbd;
+
+        --element-background: #4d4d4d;
+        --element-boarder: 1px solid #e8e8e8;
+        --element-radius: 8px;
+        --element-padding-horizontal: 16px;
+        --element-padding-vertical: 8px;
+        --element-padding: var(--element-padding-vertical) var(--element-padding-horizontal);
+
+        --element-padding-between: var(--element-padding-vertical);
+
+        --element-error-color: hsl(0, 50%, 50%);
+    }
+}
+
+* {
+    font-family: sans-serif;
+    font-size: 1rem;
+    color: var(--text-color)
+}
+
+html, body, user-graph, user-graph > svg {
+    margin: 0;
+    padding: 0;
+
+    display: block;
+    width: 100svw;
+    height: 100svh;
+}
+
+user-graph {
+    background: var(--background);
+    overflow: hidden;
+}
+
+graph-toolbar {
+    width: 65ch;
+    max-width: calc(100% - 2 * var(--element-padding-horizontal));
+
+    position: fixed;
+    bottom: var(--element-padding-horizontal);
+    right: var(--element-padding-horizontal);
+}

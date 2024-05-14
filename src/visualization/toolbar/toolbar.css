@@ -1,0 +1,70 @@
+.graph-toolbar {
+    display: flex;
+    gap: var(--element-padding-horizontal);
+    align-items: center;
+
+    > button {
+        flex: 0;
+
+        display: inherit;
+        align-items: inherit;
+        gap: var(--element-padding-between);
+
+        padding: min(var(--element-padding-vertical), var(--element-padding-horizontal));
+
+        background: var(--element-background);
+        outline: none;
+
+        border: var(--element-boarder);
+        border-radius: var(--element-radius);
+
+        svg {
+            fill: var(--text-color);
+        }
+    }
+
+    label {
+        color: var(--text-color);
+        fill: var(--text-color);
+
+        flex: 1;
+
+        display: inherit;
+        align-items: inherit;
+        gap: var(--element-padding-between);
+
+        padding: var(--element-padding);
+
+        background: var(--element-background);
+        border: var(--element-boarder);
+        border-radius: var(--element-radius);
+
+        input {
+            background: none;
+            width: 100%;
+            outline: none;
+            border: none;
+
+            color: inherit;
+
+            ::placeholder {
+                color: var(--placeholder-text-color);
+            }
+        }
+
+        button {
+            height: 24px;
+            padding: 0;
+            background: transparent;
+            border: none;
+        }
+    }
+
+    label[error] {
+        border-color: var(--element-error-color);
+        color: var(--element-error-color);
+        fill: var(--element-error-color) !important;
+    }
+}
+
+

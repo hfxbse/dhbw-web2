@@ -11,7 +11,7 @@ import {
 } from "./instagram/login";
 import {FollowerFetcherEvent, FollowerFetcherEventTypes, getFollowerGraph, printGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
-import {fetchUser, User, UserGraph} from "./instagram/user";
+import {fetchUser, UnsettledUser, User, UnsettledUserGraph, UserGraph} from "./instagram/user";
 import {writeFileSync} from "node:fs";
 import {ReadableStream} from "node:stream/web";
 
@@ -113,17 +113,17 @@ async function wholeNumberPrompt({message, defaultValue}: { message: string, def
     }).then(input => parseInt(input, 10))
 }
 
-async function settleGraph(graph: UserGraph) {
+async function settleGraph(graph: UnsettledUserGraph) {
     delete graph["canceled"]
 
-    const downloads = Object.values(graph).map(async user => {
+    const downloads: Promise<User>[] = Object.values(graph).map(async user => {
         return {
             ...user,
             profile: {
                 ...user.profile,
                 image: await user.profile.image
                     .then(blobToDataUrl)
-                    .catch((reason) => {
+                    .catch((reason: any) => {
                         console.error({
                             message: `Failed to download profile picture. (User: ${user.profile.username})`,
                             reason
@@ -143,7 +143,7 @@ async function settleGraph(graph: UserGraph) {
     return settled
 }
 
-const writeGraphToFile = async (root: User, graph: UserGraph) => {
+const writeGraphToFile = async (root: UnsettledUser, graph: UnsettledUserGraph) => {
     const filename = `${root.id}:${root.profile.username}:${new Date().toISOString()}.json`
     const data = await settleGraph(graph)
 
@@ -162,7 +162,7 @@ const writeGraphToFile = async (root: User, graph: UserGraph) => {
 }
 
 async function streamGraph(stream: ReadableStream<FollowerFetcherEvent>) {
-    let graph: UserGraph = {}
+    let graph: UnsettledUserGraph = {}
     let cancellation: Promise<void>
 
     const reader = stream.getReader()

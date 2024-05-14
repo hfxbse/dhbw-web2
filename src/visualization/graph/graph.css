@@ -1,0 +1,13 @@
+.link > line {
+    stroke-opacity: 0.6;
+    transition: stroke 500ms;
+}
+
+.link > line:not(line[stroke]) {
+    stroke: #999;
+}
+
+.node {
+    stroke: #fff;
+    stroke-width: 1.5;
+}
