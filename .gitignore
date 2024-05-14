@@ -238,3 +238,4 @@ $RECYCLE.BIN/
 *.lnk
 
 /build
+*output.txt

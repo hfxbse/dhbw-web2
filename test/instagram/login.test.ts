@@ -4,9 +4,10 @@ import {
     encryptPassword,
     fetchVerification,
     InstagramEncryptionKey,
-    login, SessionData, TwoFactorInformation, TwoFactorRequired,
+    login, TwoFactorInformation, TwoFactorRequired,
     VerificationData, verify2FA
-} from "../src/instagram";
+} from "../../src/instagram/login";
+import SessionData from "../../src/instagram/session-data";
 
 interface PasswordEncryption {
     password: string,

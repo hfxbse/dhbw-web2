@@ -1,5 +1,7 @@
 import hexToArrayBuffer from "hex-to-array-buffer";
 import sealBox from "tweetnacl-sealedbox-js";
+import SessionData from "./session-data";
+import {hasJsonBody} from "./request";
 
 const crypto = globalThis.crypto
 const encoder = new TextEncoder()
@@ -11,14 +13,6 @@ export class TwoFactorRequired extends Error {
         super("Two factor authentication is enabled for this account.");
         this.info = info
     }
-}
-
-export interface SessionData extends Record<string, any> {
-    user: {
-        id: number,
-        username?: string
-    },
-    id: string
 }
 
 export interface TwoFactorInformation {
@@ -130,9 +124,6 @@ function getSessionId(response: Response): string {
         .substring(identifier.length)
 }
 
-function hasJsonBody(response: Response): boolean {
-    return response.headers.get("Content-Type").startsWith("application/json;")
-}
 
 export async function login({user, password, verification}: {
     user: string,
