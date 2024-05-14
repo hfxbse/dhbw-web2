@@ -1,6 +1,6 @@
 import * as prompt from '@inquirer/prompts';
 import {ExitPromptError} from '@inquirer/prompts';
-import {FollowerFetcherEvent, FollowerFetcherEventTypes, getFollowerGraph} from "./instagram/follower";
+import {FollowerFetcherEvent, FollowerFetcherEventTypes, fetchFollowerGraph} from "./instagram/follower";
 import SessionData from "./instagram/session-data";
 import {UnsettledUser, UnsettledUserGraph, UserGraph} from "./instagram/user";
 import {PathOrFileDescriptor, writeFileSync} from "node:fs";
@@ -78,27 +78,30 @@ async function streamGraph(root: UnsettledUser, filename: string, stream: Readab
 
             graph = value.graph
 
-            const identifier = `(User: ${value.user.profile.username})`
+            const identifier = `(${value.user.profile.username})`
+            const time = `[${new Date().toISOString()}]`
 
             if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWER) {
-                console.log(`Reached the maximum amount of followers to include. Currently included are ${value.amount}. ${identifier}`)
+                console.log(`${time} Reached the maximum amount of followers to include. Currently included are ${value.amount}. ${identifier}`)
             } else if (value.type === FollowerFetcherEventTypes.DEPTH_LIMIT_FOLLOWING) {
-                console.log(`Reached the maximum amount of followed users to include. Currently included are ${value.amount}. ${identifier}`)
+                console.log(`${time} Reached the maximum amount of followed users to include. Currently included are ${value.amount}. ${identifier}`)
             } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_BATCH) {
-                console.log(`Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+                console.log(`${time} Reached follower batch limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
                 await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.RATE_LIMIT_DAILY) {
-                console.log(`Reached follower daily limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
+                console.log(`${time} Reached follower daily limit. Resuming after ${value.delay} milliseconds. ${identifier}`)
                 await updatesSaveFiles(value.graph)
             } else if (value.type === FollowerFetcherEventTypes.UPDATE) {
                 const total = Object.entries(value.graph).length
-                const followers = value.added.followers.length;
+                const followers = value.added.followers.ids.length;
                 const users = value.added.users.length
+                const targetUsername = value.added.followers.target.profile.username;
+
 
                 console.log(
-                    `Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''} to ${value.user.profile.username}. ` +
+                    `${time} Added ${followers > 0 ? followers : 'no'} follower${followers > 1 ? 's' : ''} to ${targetUsername}. ` +
                     `Discovered ${users > 0 ? users : 'no'} new user${users > 1 ? 's' : ''}. ` +
-                    `Total user count: ${total}, completely queried users ${value.added.progress.done}.`
+                    `Total user count: ${total}, completely queried users ${value.added.progress.done}. ${identifier}`
                 )
             }
         }
@@ -136,7 +139,7 @@ try {
 
     const includeFollowing = await prompt.confirm({message: "Include following?", default: true})
 
-    const stream = getFollowerGraph({
+    const stream = fetchFollowerGraph({
         includeFollowing,
         root,
         session,
@@ -152,6 +155,10 @@ try {
                 },
                 parallelTasks: 20,
                 delay: {
+                    images: {
+                        upper: 5000,
+                        lower: 500
+                    },
                     pages: {
                         upper: 40000,
                         lower: 20000
@@ -170,6 +177,8 @@ try {
     })
 
     const {graph: unsettledGraph, cancellation} = await streamGraph(root, filename, stream)
+
+    console.log('Waiting for profile pictures to be downloaded.')
     const graph = await settleGraph(unsettledGraph)
 
     const fileWriters = Promise.allSettled([
@@ -185,7 +194,7 @@ try {
     await Promise.all([
         fileWriters.then(() => {
             console.info(
-                "The may process still needs to wait on the rate limiting timeouts to exit cleanly. " +
+                "The process may still needs to wait on the rate limiting timeouts to exit cleanly. " +
                 "Killing it should not cause any data lose."
             )
         }),
