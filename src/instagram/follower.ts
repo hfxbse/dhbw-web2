@@ -186,7 +186,11 @@ export function fetchFollowerGraph({root, session, limits, includeFollowing}: {
                 return
             }
 
-            await createFollowerGraph({limits, graph, session, controller, includeFollowing});
+            try {
+                await createFollowerGraph({limits, graph, session, controller, includeFollowing});
+            } catch (e) {
+                controller.error(e)
+            }
 
             controller.close();
         },
