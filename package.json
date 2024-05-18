@@ -1,7 +1,7 @@
 {
-  "name": "my-webpack-project",
+  "name": "dhbw-web2",
   "version": "1.0.0",
-  "description": "My webpack project",
+  "description": "A tool to create a visual representation how accounts are following each other on Instagram.",
   "private": true,
   "scripts": {
     "precli": "webpack --mode=production --node-env=production",
