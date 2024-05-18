@@ -126,7 +126,9 @@ export default class UserGraphVisualization extends HTMLElement {
             .text((user: User) => {
                 const count = user.followerIds?.length ?? 0;
 
-                return `${user.profile.name} @${user.profile.username} (${count} follower${count > 1 ? 's' : ''})`;
+                const name = `${user.profile.name} @${user.profile.username}`
+                const counts = `${count} follower${count > 1 ? 's' : ''}, following ${user.followingCount ?? 0}`
+                return `${name} (${counts}${user.public ? ', public profile' : ''})`;
             });
 
         node.call(d3.drag()
