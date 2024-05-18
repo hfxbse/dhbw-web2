@@ -127,7 +127,7 @@ export default class UserGraphVisualization extends HTMLElement {
                 const count = user.followerIds?.length ?? 0;
 
                 const name = `${user.profile.name} @${user.profile.username}`
-                const counts = `${count} follower${count > 1 ? 's' : ''}${user.followingCount != undefined ? `, following ${user.followingCount}` : ''}`
+                const counts = `${count} follower${count > 1 ? 's' : ''}, following ${user.followingCount ?? 0}`
                 return `${name} (${counts}${user.public ? ', public profile' : ''})`;
             });
 
