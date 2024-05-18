@@ -28,13 +28,26 @@ which can be viewed in any modern Browser. The tool will stop early if it receiv
 
 ### Options
 
-| Name                   | Description                                                                                                                                                                         | Default value |
-|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
-| Session ID             | The session ID used by Instagram to authenticate the user. It can be attained either by logging in via the tool or through the data stored by the official Instagram web app.       |
-| Root account           | The account from which the graph generation should start.                                                                                                                           |               |
-| Generations            | The distance between the root account and the current user. It is defined by the number of accounts between them. Generation 0, therefor, only includes the root account.           | 1             |
-| Maximal follower count | Maximum amount of followers to fetch for each account. If more followers are over-fetched, they will be included but not further queried. It also applies to the followed accounts. | 250           |
-| Include following      | Also fetch the accounts are followed by an account, not only their followers.                                                                                                       | Yes           |
+| Name                   | Environment variable     | Description                                                                                                                                                                         | Default value |
+|------------------------|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| Session ID             |                          | The session ID used by Instagram to authenticate the user. It can be attained either by logging in via the tool or through the data stored by the official Instagram web app.       |
+| Root account           |                          | The account from which the graph generation should start.                                                                                                                           |               |
+| Generations            |                          | The distance between the root account and the current user. It is defined by the number of accounts between them. Generation 0, therefor, only includes the root account.           | 1             |
+| Maximal follower count |                          | Maximum amount of followers to fetch for each account. If more followers are over-fetched, they will be included but not further queried. It also applies to the followed accounts. | 250           |
+| Include following      |                          | Also fetch the accounts are followed by an account, not only their followers.                                                                                                       | Yes           |
+|                        | `RATE_BATCH_SIZE`        | How many followers can be fetched before pausing. This is determined by the total account count in the graph. The batch size should not exceed 9000. Less then 5000 is recommended. | 3000          |
+|                        | `RATE_BATCH_COUNT`       | How many consecutive batches can executed before pausing between them. Should not exceed 20.                                                                                        | 15            |
+|                        | `RATE_PARALLEL_TASKS`    | How many requests to Instagram can be executed in parallel.                                                                                                                         | 3             |
+|                        | `RATE_DELAY_IMAGES_MAX`  | How long to wait at most before downloading a profile image in seconds.                                                                                                             | 5             |
+|                        | `RATE_DELAY_IMAGES_MIN`  | How long to wait at least before downloading a profile image in seconds.                                                                                                            | 1             |
+|                        | `RATE_DELAY_PAGES_MAX`   | How long to wait at most before sending a new request to Instagram in seconds.                                                                                                      | 60            |
+|                        | `RATE_DELAY_PAGES_MIN`   | How long to wait at least before sending a new request to Instagram in seconds.                                                                                                     | 30            |
+|                        | `RATE_DELAY_BATCHES_MAX` | How long to wait at most between batches in minutes.                                                                                                                                | 60            |
+|                        | `RATE_DELAY_BATCHES_MIN` | How long to wait at least between batches in minutes.                                                                                                                               | 30            |
+|                        | `RATE_DELAY_DAILY_MAX`   | How long to wait at most between consecutive batches once the set batch count is reached in hours.                                                                                  | 30            |
+|                        | `RATE_DELAY_DAILY_MIN`   | How long to wait at least between consecutive batches once the set batch count is reached in hours.                                                                                 | 25            |
+
+The actual wait-time is always determine at random and between the `MIN` and `MAX` values.
 
 ### Handling of errors and Instagram's rate limits
 

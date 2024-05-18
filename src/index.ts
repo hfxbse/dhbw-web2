@@ -116,6 +116,26 @@ async function streamGraph(root: UnsettledUser, filename: string, stream: Readab
     return {graph, cancellation}
 }
 
+function environmentVariableOrDefault(envVarName: string, defaultValue: number) {
+    const env = process.env[envVarName]
+    if ((env?.length ?? 0) < 1) return defaultValue
+
+    const errorMessage = `Failed to read ${envVarName}, expected a positive whole number, ` +
+        `got "${env}". Falling back to the default value ${defaultValue}`
+
+    try {
+        const value = parseInt(env, 10)
+
+        if (value >= 0) return value
+
+        console.error(errorMessage)
+    } catch (e) {
+        console.error(errorMessage)
+    }
+
+    return defaultValue
+}
+
 
 try {
     const existingSession = await prompt.confirm({message: "Use an existing session id?", default: true});
@@ -150,26 +170,26 @@ try {
             },
             rate: {
                 batch: {
-                    size: 4000,
-                    count: 10
+                    size: environmentVariableOrDefault("RATE_BATCH_SIZE", 3000),
+                    count: environmentVariableOrDefault("RATE_BATCH_COUNT", 15)
                 },
-                parallelTasks: 20,
+                parallelTasks: environmentVariableOrDefault("RATE_PARALLEL_TASKS", 3),
                 delay: {
                     images: {
-                        upper: 5000,
-                        lower: 500
+                        max: environmentVariableOrDefault("RATE_DELAY_IMAGES_MAX", 5) * 1000,
+                        min: environmentVariableOrDefault("RATE_DELAY_IMAGES_MIN", 1) * 1000
                     },
                     pages: {
-                        upper: 40000,
-                        lower: 20000
+                        max: environmentVariableOrDefault("RATE_DELAY_PAGES_MAX", 60) * 1000,
+                        min: environmentVariableOrDefault("RATE_DELAY_PAGES_MIN", 30) * 1000
                     },
                     batches: {
-                        upper: 35 * 60 * 1000,
-                        lower: 25 * 60 * 1000
+                        max: environmentVariableOrDefault("RATE_DELAY_BATCHES_MAX", 60) * 60 * 1000,
+                        min: environmentVariableOrDefault("RATE_DELAY_BATCHES_MIN", 30) * 60 * 1000
                     },
                     daily: {
-                        upper: 30 * 60 * 60 * 1000,
-                        lower: 25 * 60 * 60 * 1000
+                        max: environmentVariableOrDefault("RATE_DELAY_DAILY_MAX", 30) * 60 * 60 * 1000,
+                        min: environmentVariableOrDefault("RATE_DELAY_DAILY_MIN", 25) * 60 * 60 * 1000
                     }
                 }
             }
