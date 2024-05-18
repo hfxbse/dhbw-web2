@@ -1,6 +1,6 @@
 export interface RandomDelayLimit {
-    upper: number,
-    lower: number
+    max: number,
+    min: number
 }
 
 export interface Limits {

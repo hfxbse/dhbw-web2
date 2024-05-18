@@ -29,13 +29,13 @@ export interface FollowerFetcherEvent {
 }
 
 function randomDelay(limit: RandomDelayLimit) {
-    if (limit.lower > limit.upper) {
-        const temp = limit.lower;
-        limit.lower = limit.upper;
-        limit.upper = temp
+    if (limit.min > limit.max) {
+        const temp = limit.min;
+        limit.min = limit.max;
+        limit.max = temp
     }
 
-    const time = Math.floor(Math.random() * (limit.upper - limit.lower) + limit.lower);
+    const time = Math.floor(Math.random() * (limit.max - limit.min) + limit.min);
     return {time, delay: new Promise(resolve => setTimeout(resolve, time))}
 }
 
